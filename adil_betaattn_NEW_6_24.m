@@ -13,35 +13,54 @@ PEAK_FRQ = 18;
 BANDWIDTH = 3;
 SAMPLE_FRQ = 1000;
 THRESHOLD = 0.15;
-START_TIME = 1000;
-END_TIME = 3000;
+START_TIME = 500;
+END_TIME = 3500;
 % This not needed because it is computed later. NUM_DATASETS = 5;
 
 %% Build Data
 all_electrodes = build_data(strcat(filename,'.mat'), NUM_ELEC, NUM_OBS, PEAK_FRQ, BANDWIDTH, SAMPLE_FRQ);
+NUM_TRIALS = size(all_electrodes,2);
 %% Compute Power Spectrum (empty)
 
 %% Simulation: Simulate
-%%Simulate 1000 experiments by randomly selecting 50 trials for each
-%%experiment. Yields a matrix of 1000 beta attenuation times for each
-%%electrode
-bootstrapped_times = simulate_BAT(all_electrodes,NUM_ELEC, 0:10, 1000,10,[82]);
+NUM_SIMS = 20;
+BIN = 5;
+TRIAL_RANGE = 1:NUM_TRIALS;
+bootstrapped_times = simulate_BAT(all_electrodes,NUM_ELEC, TRIAL_RANGE, NUM_SIMS, BIN, START_TIME, END_TIME,[82]);
+
+% 
+% 
+% bootstrapped_times = zeros(NUM_ELEC,NUM_SIMS);
+% if BIN > max(TRIAL_RANGE) - min(TRIAL_RANGE)
+%     error('BIN must be smaller than the number of trials')
+% end
+% for j = 1:NUM_SIMS
+%     i = round(rand(BIN,1)*(max(TRIAL_RANGE)-min(TRIAL_RANGE)) + min(TRIAL_RANGE));
+%     BAM = compute_BAM(all_electrodes(:,i,:), NUM_ELEC, START_TIME, END_TIME, [82]);
+%     bootstrapped_times(:,j) = BAM;    
+%     j
+% end        
+% bootstrapped_times = simulate_BAT(all_electrodes,NUM_ELEC, 0:10, 1000,10,[82]);
 %%
 
 %% PLOT: To visualize (debugging purposes), plot BAT
 for i = 1:96
     data = nanmean(all_electrodes(500:3500, 1:30,i),2);
+    block_test = round((3500 - 500) / 3);
+    logitc = @(x, c) (c(1) - c(2)) ./ (1 + exp(-c(3) .* (x - c(4)))) + c(2);
     plot(data,'LineWidth',4) 
-    LB = [min(data(1:1000)) min(data(2000:3000)) -1, 1];
-    UB = [max(data(1:1000)) max(data(2000:3000)) -.01, 2000];
+    LB = [min(data(1:block_test)) min(data(block_test*2:block_test*3)) -1, 1];
+    UB = [max(data(1:block_test)) max(data(block_test*2:block_test*3)) -.01, 2000];
     x = 500:3500;
-    y = nanmean(all_electrodes(500:3500, 1:30,i),2);
-    clear cHat time_of
-    if(~isnan(sum(y)))
-        cHat = fitSigmoid2(x, y, LB, UB);
+    clear cHat
+    if(~isnan(sum(data)))
+        cHat = fitSigmoid2(x, data, LB, UB);
         hold on
         plot(logitc(x, cHat), 'r')
-        line([cHat(4)-500 cHat(4)-500],get(gca,'ylim'));
+        line([beta_attn_med(i) - START_TIME beta_attn_med(i) - START_TIME],get(gca,'ylim'),'Color','g');
+%         line([cHat(4) - START_TIME cHat(4) - START_TIME],get(gca,'ylim'),'Color','g');
+%         beta_attn_med(i)
+%         cHat(4)
         %THE FOURTH ARGUMENT OF cHat IS MY NEW BAT
         hold off
     end
@@ -49,23 +68,27 @@ for i = 1:96
     %The above gathers the mean of the 2nd dimension of the matrix, the
     %trials, for each row, i.e. for each second of time. 
     line([1500 1500],get(gca,'ylim'));
+    line([beta_attn_times(i)-START_TIME beta_attn_times(i)-START_TIME],get(gca,'ylim'),'Color','r');
     xlim([0,3000])
 %     saveas(gcf,'beta_attn_sample_elec1','eps');
     pause;
 end
 %% Compute BAT for actual experiment
 beta_attn_times = compute_BAT(all_electrodes, NUM_ELEC, START_TIME, END_TIME, THRESHOLD, [82]);
-%% Simulation: Average each electrode across 1000 trials
-simulated_fit = mean(bootstrapped_times,2);
+%% Compute BAM for actual experiment
+beta_attn_med = compute_BAM(all_electrodes(:,1:30,:), NUM_ELEC, START_TIME, END_TIME, [82]);
+%% Simulation: Average each electrode across all trials
+simulated_fit = mean(bootstrapped_times,2); %USE NANMEAN?
 %% Check if inside confidence interval
 simulated_sd = std(bootstrapped_times);
 is_fitted = sum(beta_attn_times > quantile(bootstrapped_times, 0.025, 2) & beta_attn_times < quantile(bootstrapped_times, .975, 2));
 num_working_electrodes = sum(beta_attn_times > 0);
+is_fitted/num_working_electrodes
 %% Chan2RC preparation 1/2 (needs internet)
 chan2rc = makechan2rc_mac('y','mio');
 %% Chan2RC preparation 2/2 (doesn't need internet)
 plot_this_matrix = zeros(10,10);
-plot_this_matrix_bootstrap = zeros(10,10,1000);
+plot_this_matrix_bootstrap = zeros(10,10,NUM_SIMS);
 %%
 %currentBAT = BAT_M11014; %Use when you store Beta attenuation times so you
 %don't have to produce the same matrix over and over.
@@ -81,7 +104,7 @@ end
 %%
 %Create matrix to plot with bootstrapped beta attenuation times
 for i=1:128
-    for j=1:1000
+    for j=1:NUM_SIMS
         if i <= NUM_ELEC
             index = chan2rc(i,:);
             plot_this_matrix_bootstrap(index(2),-index(1)+11,j) = bootstrapped_times(i,j);
@@ -89,8 +112,10 @@ for i=1:128
     end
 end
         
-%% THE COMMAND HERE SHOULD ONLY BE RUN ONCE%% 
-beta_attn_times(~beta_attn_times) = nan; %%Turn the zeros into nans so they don't screw up the color plot
+%% THE COMMAND HERE SHOULD ONLY BE RUN ONCE 
+beta_attn_times(~beta_attn_times) = nan; %Turn the zeros into nans so they don't screw up the color plot
+beta_attn_med(~beta_attn_med) = nan;
+bootstrapped_times(~bootstrapped_times) = nan;
 %% Fit Linear Model and Compute Statistics
 %Do I need to do this for the bootstrapped times?
 plotX = ones(96,3);
@@ -141,7 +166,7 @@ set(get(c_bar, 'xlabel'), 'string', 'time (ms)')
 
 saveas(gcf,strcat('BAT_PLOT_',filename),'epsc');
 %% PLOT add-on: Plot all bootstrapped arrows
-for j = 1:100
+for j = 1:NUM_SIMS
     plotX = ones(96,3);
     plotX(:,2) = chan2rc(1:96,1);
     plotX(:,3) = chan2rc(1:96,2);
@@ -149,7 +174,7 @@ for j = 1:100
     coefs_norm = norm([(coefs(3)/2),(coefs(2)/2)]);
     arrow([5.5,5.5],[5.5+(coefs(3)/2)/coefs_norm*3,5.5-(coefs(2)/2)/coefs_norm*3],'Width',3);
 end
-% saveas(gcf,'M11025_100_boostrap','eps')
+% saveas(gcf,strcat('BAT_PLOT_BOOTSTRAP_',filename','eps')
 %%
 % BAT_M11025 = beta_attn_times;
 % BAT_M11025_boostrap = bootstrapped_times;
