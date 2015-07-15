@@ -1,4 +1,4 @@
-clearvars -except model* BAO* chan2rc
+clearvars -except model* BAO_coef* chan2rc
 % clearvars -except BAT_R2 BAT_M11014 BAT_M11014_boostrap MAT_M11014 BAT_M11017_boostrap MAT_M11017 BAT_M11019_boostrap MAT_M11019 BAT_M11021_boostrap MAT_M11021 BAT_M11025_boostrap MAT_M11025 BAT_S11014 MAT_S11014;
 %Change file names at line 9, 149, 204, 215, 218,219
 %'M1TM_20111014.mat'
@@ -24,7 +24,7 @@ NUM_TRIALS = size(all_electrodes,2);
 
 %% Simulation: Simulate
 NUM_SIMS = 20;
-BIN = 5;
+BIN = 30;
 TRIAL_RANGE = 1:NUM_TRIALS;
 bootstrapped_times = simulate_BAT(all_electrodes,NUM_ELEC, TRIAL_RANGE, NUM_SIMS, BIN, START_TIME, END_TIME,[82]);
 
@@ -45,12 +45,12 @@ bootstrapped_times = simulate_BAT(all_electrodes,NUM_ELEC, TRIAL_RANGE, NUM_SIMS
 
 %% PLOT: To visualize (debugging purposes), plot BAT
 for i = 1:96
-    data = nanmean(all_electrodes(500:3500, 1:30,i),2);
+    data = nanmean(all_electrodes(500:3500, :,i),2);
     block_test = round((3500 - 500) / 3);
     logitc = @(x, c) (c(1) - c(2)) ./ (1 + exp(-c(3) .* (x - c(4)))) + c(2);
     plot(data,'LineWidth',4) 
     LB = [min(data(1:block_test)) min(data(block_test*2:block_test*3)) -1, 1];
-    UB = [max(data(1:block_test)) max(data(block_test*2:block_test*3)) -.01, 2000];
+    UB = [max(data(1:block_test)) max(data(block_test*2:block_test*3)) -.01, 3000];
     x = 500:3500;
     clear cHat
     if(~isnan(sum(data)))
@@ -58,6 +58,7 @@ for i = 1:96
         hold on
         plot(logitc(x, cHat), 'r')
         line([beta_attn_med(i) - START_TIME beta_attn_med(i) - START_TIME],get(gca,'ylim'),'Color','g');
+        beta_attn_med(i)
 %         line([cHat(4) - START_TIME cHat(4) - START_TIME],get(gca,'ylim'),'Color','g');
 %         beta_attn_med(i)
 %         cHat(4)
@@ -76,7 +77,7 @@ end
 %% Compute BAT for actual experiment
 beta_attn_times = compute_BAT(all_electrodes, NUM_ELEC, START_TIME, END_TIME, THRESHOLD, [82]);
 %% Compute BAM for actual experiment
-beta_attn_med = compute_BAM(all_electrodes(:,1:30,:), NUM_ELEC, START_TIME, END_TIME, [82]);
+beta_attn_med = compute_BAM(all_electrodes(:,:,:), NUM_ELEC, START_TIME, END_TIME, [82]);
 %% Simulation: Average each electrode across all trials
 simulated_fit = mean(bootstrapped_times,2); %USE NANMEAN?
 %% Check if inside confidence interval
@@ -127,6 +128,34 @@ eval(strcat(model, ' = LinearModel.fit(ds, ''BAT~X+Y'');'));
 R2 = eval(strcat(model,'.Rsquared.Ordinary'));
 F = (eval(strcat(model,'.SSR / ',model,'.NumPredictors', '/ ',model,'.MSE')));
 pValue = 1 - fcdf(F, eval(strcat(model,'.NumPredictors')), eval(strcat(model,'.DFE')));
+
+%% Fit Linear Model for Bootstrapped Data
+plotB = ones(96,3);
+plotB(:,2) = chan2rc(1:96,1);
+plotB(:,3) = chan2rc(1:96,2);
+for i = 1:NUM_SIMS
+    i
+    ds_b = dataset(bootstrapped_times(:,i), plotB(:,2),plotB(:,3), 'VarNames', {'BAT','X','Y'});
+    simulated_model = LinearModel.fit(ds_b, 'BAT~X+Y');
+    R2_b = simulated_model.Rsquared.Ordinary;
+    coefs_b = simulated_model.Coefficients.Estimate;
+    coefs_b_norm = norm([(coefs_b(3)/2),(coefs_b(2)/2)]);
+    if ~exist('BAO_b_coef','var')
+        BAO_b_coef = {coefs_b filename R2_b 'angle'};
+    else
+        BAO_b_coef = [BAO_b_coef; {coefs_b filename R2_b 'angle'}];
+    end
+%     %I don't think I need F and p-value, so I'm leaving them out. 
+%     
+%     model_b = strcat('model_b_',filename);
+%     eval(strcat(model_b, ' = LinearModel.fit(ds_b, ''BAT~X+Y'');'));
+%     R2_b = eval(strcat(model_b,'.Rsquared.Ordinary'));
+%     F = (eval(strcat(model_b,'.SSR / ',model_b,'.NumPredictors', '/ ',model_b,'.MSE')));
+%     pValue = 1 - fcdf(F, eval(strcat(model_b,'.NumPredictors')), eval(strcat(model_b,'.DFE')));
+end
+
+
+
 
 
 %% PLOT: Compute BAO and plot 10x10 square color-plot of BAT
@@ -243,6 +272,47 @@ end
 %Feb 27
 %Compute the arrow of BAT and test the unimodality 
 
+%% PLOT: SIMULATION BAO. Compute Vector Strength. Run after SIMULATION
+%NOTE: Should we weight these by R2 value, when computing vector strength?
+%TOTAL_SIM is NUM_SIMS * NUM_DATASETS
+% [NUM_TOTAL_SIM,~] = size(BAO_coef);
+
+%Plot a circle
+ang=0:0.01:2*pi; 
+r = 1;
+xp=r*cos(ang);
+yp=r*sin(ang);
+plot(0+xp,0+yp, 'Color', 'black');
+axis([-1 1 -1 1]);
+axis square;
+axis off;
+%end circle plot
+
+for i = 1:NUM_SIMS
+    coefs_b = cell2mat(BAO_b_coef(i,1));
+    t_filename = char(BAO_b_coef(i,2));
+    coefs_b_norm = norm([(coefs_b(3)/2),(coefs_b(2)/2)]);
+    x = ((coefs_b(3)/2)/coefs_b_norm);
+    y = ((coefs_b(2)/2)/coefs_b_norm);
+    %index 3 is the R2 of the vector 
+    r2_b = cell2mat(BAO_b_coef(i,3));
+    %index 4 is the angle of the vector in radians
+    BAO_b_coef(i,4) = {acos(x)};  
+    arrow([0,0],[0+x*r2_b,0-y*r2_b],'Width',1, 'Length', 3);
+    if(coefs_b(3)>0)
+        text(0+x*r2_b+0.02,0-y*r2_b, t_filename(length(t_filename)-2:length(t_filename)));
+    else
+        text(0+x*r2_b-.12,0-y*r2_b, t_filename(length(t_filename)-2:length(t_filename)));
+    end
+    
+    if i == NUM_SIMS
+        vs = vectorStrength(cell2mat(BAO_b_coef(:,4)));
+        wvs = weightedVectorStrength(cell2mat(BAO_b_coef(:,4)),cell2mat(BAO_b_coef(:,3)));
+        text(0,-0.8,strcat('Vector Strength: ',num2str(vs)), 'FontName', 'Arial','FontSize',12, 'FontWeight','bold');
+        text(0,-.9,strcat('Weighted (R2) Vector Strength: ',num2str(wvs)), 'FontName', 'Arial','FontSize',12, 'FontWeight','bold');
+    end
+end
+
 %% PLOT: BAO for each dataset. Compute Vector Strength. Run after computing BAO for all days
 %NOTE: Should we weight these by R2 value, when computing vector strength?
 [NUM_DATASETS,~] = size(BAO_coef);
@@ -278,11 +348,12 @@ for i = 1:NUM_DATASETS
         text(0,-.9,strcat('Weighted (R2) Vector Strength: ',num2str(wvs)), 'FontName', 'Arial','FontSize',12, 'FontWeight','bold');
     end
 end
+
 %% Simulation: Compute p-value for Vector Strength
 %Generate random set of NUM_DATASETS vectors and R2 values [theta r2] rand from 0 to 2pi
 for j= 1:3
     NUM_SIMS = 100000;
-
+    NUM_DATASETS = 20;
     simulated_wvs = zeros(NUM_SIMS,1);
     simulated_vs = zeros(NUM_SIMS,1);
     for i = 1:NUM_SIMS

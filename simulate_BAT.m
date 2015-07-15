@@ -1,30 +1,19 @@
-function bootstrapped_times = simulate_BAT(data, NUM_ELEC,TRIAL_RANGE, NUM_SIMS,BIN,REMOVE)
-%TRIAL_RANGE is a column vector of trials [1 2 323 322 etc.] indicating the
-%trials to sample from 
-%BIN is the number of trials to use for each average.  
-    if(length(TRIAL_RANGE) < BIN)
-        error('Number of bins must be less than the number of trials to sample from');
-    end
+function bootstrapped_times = simulate_BAT(all_electrodes, NUM_ELEC,TRIAL_RANGE, NUM_SIMS,BIN,START_TIME, END_TIME,REMOVE)
+    %Simulate NUM_SIMS experiments by randomly selecting BIN trials in
+    %TRIAL_RANGE for each experiment. Yields a matrix of NUM_SIMS beta attenuation 
+    %times for each electrode
     
+    %TRIAL_RANGE: Array of trials to use in simulation
+    %NUM_SIMS: Number of simulations to run (per bin)
+    %BIN: Number of trials to include in each average
+
     bootstrapped_times = zeros(NUM_ELEC,NUM_SIMS);
-    for k = 1:NUM_ELEC
-        for j = 1:NUM_SIMS
-            %Could also use randsample(1:num_trials, 50)
-            %DO YOU WANT TO BE ABLE TO SPECIFY WHICH TRIALS YOU WANT, OR
-            %ONLY SPECIFY THE RANGE FROM WHICH YOU DRAW THEM? i.e.
-            %implement as 32 or 1:32?
-            i = round(rand(BIN,1)*(NUM_TRIALS-1) + 1);
-            trial_average = nanmean(data(:,i,k),2);
-            clear min_ba max_ba cutoff tidx
-            min_ba = min(trial_average(START_TIME:END_TIME));
-            max_ba = max(trial_average(START_TIME:END_TIME));
-            cutoff = min_ba + (max_ba - min_ba) * THRESHOLD; %cutoff is the voltage at which point we say beta attenuation occured at this time.
-            tidx = find(trial_average(START_TIME:END_TIME) < cutoff, 1); %Find the first time the average amplitude is less than the cutoff voltage (because we expect beta to decrease)
-            if ~isempty(tidx) && ~any(k == REMOVE) %tossing out electrode 82
-                bootstrapped_times(k,j) = tidx + START_TIME - 1;
-            else
-                bootstrapped_times(k,j) = NaN;
-            end        
-        end
+    if BIN > max(TRIAL_RANGE) - min(TRIAL_RANGE)
+        error('BIN must be smaller than the number of trials')
     end
-end
+    for j = 1:NUM_SIMS
+        i = round(rand(BIN,1)*(max(TRIAL_RANGE)-min(TRIAL_RANGE)) + min(TRIAL_RANGE));
+        BAM = compute_BAM(all_electrodes(:,i,:), NUM_ELEC, START_TIME, END_TIME, REMOVE);
+        bootstrapped_times(:,j) = BAM;    
+        j
+    end        
