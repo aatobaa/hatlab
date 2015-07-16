@@ -1,6 +1,6 @@
 %List of Datasets:
-DATASETS = ['M1TM_20111014.mat'; 'M1TM_20111017.mat'; 'M1TM_20111019.mat'; 'M1TM_20111021.mat'; 'M1TM_20111025.mat'];
-results = cell{size(DATASETS,1),8};
+DATASETS = ['M1TM_20111014'; 'M1TM_20111017'; 'M1TM_20111019'; 'M1TM_20111021'; 'M1TM_20111025'];
+results = cell(size(DATASETS,1),9);
 
 %Indices for the cell of results.
 INDX_FILENAME = 1;
@@ -10,10 +10,17 @@ INDX_MODEL = 4;
 INDX_R2 = 5;
 INDX_PValue = 6;
 INDX_VS = 7;
-INDX_TRIAL_BIN = 8;
+INDX_WVS = 8;
+INDX_TRIAL_BIN = 9;
+
+%Remember to initialize results to have the # of indices created. 
+
 %%
 for d = 1:size(DATASETS,1)
-    clearvars -except results chan2rc DATASETS INDX*
+    %% FOR TESTING PURPOSES
+%     d = 1;
+    %% Set Constants
+    clearvars -except d results chan2rc DATASETS INDX*
     NUM_ELEC = 96;
     NUM_OBS = 4001;
     %PEAK_FRQ Should be calculated again via power spectrum
@@ -24,8 +31,7 @@ for d = 1:size(DATASETS,1)
     THRESHOLD = 0.15;
     %Segment of the data to use for computing BAT and BAM
     START_TIME = 500;
-    END_TIME = 3500;
-    
+    END_TIME = 3500;   
     filename = DATASETS(d,:);
     results{d,INDX_FILENAME} = filename;
     
@@ -34,9 +40,11 @@ for d = 1:size(DATASETS,1)
     NUM_TRIALS = size(all_electrodes,2);
     
     %% Compute empirical BAM
+    'Computing BAM'
     beta_attn_med = compute_BAM(all_electrodes(:,:,:), NUM_ELEC, START_TIME, END_TIME, [82]);
     
     %% Compute empirical BAT
+    'Computing BAT'
     beta_attn_times = compute_BAT(all_electrodes, NUM_ELEC, START_TIME, END_TIME, THRESHOLD, [82]);
     
     %% Add BAM and BAT to results
@@ -49,7 +57,6 @@ for d = 1:size(DATASETS,1)
     
     %% Chan2RC preparation 2/2 (doesn't need internet)
     plot_this_matrix = zeros(10,10);
-    plot_this_matrix_bootstrap = zeros(10,10,NUM_SIMS);
     
     %% BAT Plot Prep
     for i=1:128
@@ -64,6 +71,7 @@ for d = 1:size(DATASETS,1)
     beta_attn_med(~beta_attn_med) = nan;
     
     %% Fit Linear Model and Compute Statistics
+    'Fitting Linear Model'
     plotX = ones(96,3);
     plotX(:,2) = chan2rc(1:96,1);
     plotX(:,3) = chan2rc(1:96,2);
@@ -75,24 +83,24 @@ for d = 1:size(DATASETS,1)
     pValue = 1 - fcdf(F, eval(strcat(model,'.NumPredictors')), eval(strcat(model,'.DFE')));
 
     %% Add Linear Model to results
-    results{d,INDX_MODEL} = eval(strcat(model, ' = LinearModel.fit(ds, ''BAT~X+Y'');'));
+    results{d,INDX_MODEL} = eval(model);
     results{d,INDX_R2} = R2;
     results{d,INDX_PValue} = pValue;    
     
     %% Simulation: Simulate
+    'Simulating'
     NUM_SIMS = 20;
     BIN = 30;
     TRIAL_RANGE = 1:NUM_TRIALS;
     %Simulation actually calculates BAM; estimation is necessary with
     %smaller BINS. 
     bootstrapped_BAM = simulate_BAT(all_electrodes,NUM_ELEC, TRIAL_RANGE, NUM_SIMS, BIN, START_TIME, END_TIME,[82]);
-    %%
     
     %% Convert zeros to NaN
     bootstrapped_BAM(~bootstrapped_BAM) = nan;
-    %%
     
     %% BAT Bootstrap Plot Prep
+    plot_this_matrix_bootstrap = zeros(10,10,NUM_SIMS);
     for i=1:128
         for j=1:NUM_SIMS
             if i <= NUM_ELEC
@@ -101,9 +109,9 @@ for d = 1:size(DATASETS,1)
             end
         end
     end
-    %%
     
     %% Fit Linear Model for Bootstrapped Data
+    'Fitting Linear Model for Bootstrapped Data'
     plotB = ones(96,3);
     plotB(:,2) = chan2rc(1:96,1);
     plotB(:,3) = chan2rc(1:96,2);
@@ -119,8 +127,9 @@ for d = 1:size(DATASETS,1)
             BAO_b_coef = [BAO_b_coef; {coefs_b filename R2_b 'angle'}];
         end
     end
-
-    %% PLOT: SIMULATION BAO. Compute Vector Strength. Run after SIMULATION
+    
+    %% Compute VS and WVS from Simulation.
+    'Computing VS and WVS from Simulation'
     for i = 1:NUM_SIMS
         coefs_b = cell2mat(BAO_b_coef(i,1));
         t_filename = char(BAO_b_coef(i,2));
@@ -136,7 +145,11 @@ for d = 1:size(DATASETS,1)
             wvs = weightedVectorStrength(cell2mat(BAO_b_coef(:,4)),cell2mat(BAO_b_coef(:,3)));
         end
     end
-
+    
+    %% Add Vector Strength and Weighted Vector Strength to results
+    results{d,INDX_VS} = vs;
+    results{d,INDX_WVS} = wvs;
+    
     
     
     strcat('Finished Dataset ', filename, ' Press any key to continue.')
@@ -236,10 +249,6 @@ end
 %saveas(gcf,'M11021 M11025','eps')
 
 %arrow([1500,1500],[1500+1*1000,1500+0.5733*1000],'Width',5,'Length',30);
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%=======Due Feb 20=======%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%Try replotting the arrow for every X trials (to test learning
 %%hypothesis)
