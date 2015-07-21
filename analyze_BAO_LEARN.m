@@ -4,11 +4,15 @@
 % {'set of trials' BAM BAT model R2 PValue VS WVS}
 
 %List of Datasets:
+%Datasets for Youke:
 DATASETS = ['M1TM_20111014'; 'M1TM_20111017'; 'M1TM_20111019'; 'M1TM_20111021'; 'M1TM_20111025'];
+%Datasets for Big Papi:
+% DATASETS = [];
+
 results = cell(size(DATASETS,1),9);
 
 %Eventually want to add P-Values for weighted and unweighted vector
-%strengths.
+%strengths (currently simulating to calculate them every time).
 
 %Indices for the cell of results.
 INDX_FILENAME = 1;
@@ -314,7 +318,8 @@ END_TIME = 3500;
 %%
 
 
-%% Produce a BAT 10x10 plot for all datasets 
+%% PLOT: BAT_PLOT_M1TM_20111014
+%Produce a BAT 10x10 plot for all datasets 
 for d = 1:size(DATASETS,1)
 
     %% Preallocate
@@ -376,7 +381,8 @@ for d = 1:size(DATASETS,1)
      
 end
 
-%% PLOT: BAO for each dataset. Compute Vector Strength. Run after computing BAO for all days
+%% PLOT: Vector_strength_M1TM_201110
+%BAO for each dataset. Compute Vector Strength. Run after computing BAO for all days
 [NUM_DATASETS,~] = size(results);
 ang=0:0.01:2*pi; 
 r = 1;
@@ -442,6 +448,99 @@ for d = 1:NUM_DATASETS
         text(0,-.9,strcat('Weighted (R2) Vector Strength: ',num2str(wvs), ' p = ', num2str(p_valueWVS)), 'FontName', 'Arial','FontSize',12, 'FontWeight','bold');
     end
 end
+saveas(gcf,strcat('Vector_strength_',results{d,INDX_FILENAME}(1:11)),'epsc');
+
+%% PLOT: BAT_avg_time_M1TM_201110
+[NUM_DATASETS,~] = size(results);
+BAT_avgs = zeros(NUM_DATASETS,1);
+BAT_extrema = zeros(NUM_DATASETS,2);
+
+for d = 1:NUM_DATASETS
+    BAT = results{d, INDX_BAT};
+    try
+        BAT(~BAT) = nan;
+    catch
+        
+    end    
+    BAT_avgs(d) = nanmean(BAT);
+    BAT_extrema(d,:) = [min(BAT) max(BAT)];
+end
+global_min = min(BAT_extrema(:,1));
+dist_to_min = BAT_avgs - BAT_extrema(:,1);
+dist_to_max = BAT_avgs - BAT_extrema(:,2);
+
+figure
+errorbar(1:NUM_DATASETS, BAT_avgs, dist_to_min, dist_to_max)
+ax = gca; 
+xlabels = results(:,INDX_FILENAME)';
+set(ax,'XTick', 1:NUM_DATASETS)
+set(ax,'XTickLabel', xlabels)
+
+text(1,global_min,'min, avg, max BAT', 'FontName', 'Arial','FontSize',12, 'FontWeight','bold');
+saveas(gcf,strcat('BAT_avg_time_',results{1,INDX_FILENAME}(1:11)),'epsc');
+
+%% PLOT: BAM_avg_time_M1TM_201110
+[NUM_DATASETS,~] = size(results);
+BAM_avgs = zeros(NUM_DATASETS,1);
+BAM_extrema = zeros(NUM_DATASETS,2);
+
+for d = 1:NUM_DATASETS
+    BAM = results{d, INDX_BAM};
+    try
+        BAM(~BAM) = nan;
+    catch
+        
+    end    
+    BAM_avgs(d) = nanmean(BAM);
+    BAM_extrema(d,:) = [min(BAM) max(BAM)];
+end
+global_min = min(BAM_extrema(:,1));
+dist_to_min = BAM_avgs - BAM_extrema(:,1);
+dist_to_max = BAM_avgs - BAM_extrema(:,2);
+
+figure
+errorbar(1:NUM_DATASETS, BAM_avgs, dist_to_min, dist_to_max)
+ax = gca; 
+xlabels = results(:,INDX_FILENAME)';
+set(ax,'XTick', 1:NUM_DATASETS)
+set(ax,'XTickLabel', xlabels)
+
+text(1,global_min,'min, avg, max BAM', 'FontName', 'Arial','FontSize',12, 'FontWeight','bold');
+saveas(gcf,strcat('BAM_avg_time_',results{1,INDX_FILENAME}(1:11)),'epsc');
+%%
+
+%% PLOT: R2_M1TM_201110
+figure
+bar(cell2mat(results(:,INDX_R2)))
+axis([0.5 5.5 0 1]);
+ax = gca;
+xlabels = results(:,INDX_FILENAME)';
+set(ax,'XTick', 1:NUM_DATASETS)
+set(ax,'XTickLabel', xlabels)
+text(1,.8,'R2 values', 'FontName', 'Arial','FontSize',12, 'FontWeight','bold');
+saveas(gcf,strcat('R2_',results{1,INDX_FILENAME}(1:11)),'epsc');
+
+%% PLOT: VS_M1TM_201110
+figure
+bar(cell2mat(results(:,INDX_VS)))
+axis([0.5 5.5 0 1]);
+ax = gca;
+xlabels = results(:,INDX_FILENAME)';
+set(ax,'XTick', 1:NUM_DATASETS)
+set(ax,'XTickLabel', xlabels)
+text(1,.95,'Vector Strengths (from 1000x simulation)', 'FontName', 'Arial','FontSize',12, 'FontWeight','bold');
+saveas(gcf,strcat('VS_',results{1,INDX_FILENAME}(1:11)),'epsc');
+
+%% PLOT: WVS_M1TM_201110
+figure
+bar(cell2mat(results(:,INDX_WVS)))
+axis([0.5 5.5 0 1]);
+ax = gca;
+xlabels = results(:,INDX_FILENAME)';
+set(ax,'XTick', 1:NUM_DATASETS)
+set(ax,'XTickLabel', xlabels)
+text(1,.99,'Weighted Vector Strengths (from 1000x simulation)', 'FontName', 'Arial','FontSize',12, 'FontWeight','bold');
+saveas(gcf,strcat('WVS_',results{1,INDX_FILENAME}(1:11)),'epsc');
 
 %% PLOT add-on: Plot all bootstrapped arrows
 for j = 1:NUM_SIMS
