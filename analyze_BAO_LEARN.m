@@ -542,6 +542,100 @@ set(ax,'XTickLabel', xlabels)
 text(1,.99,'Weighted Vector Strengths (from 1000x simulation)', 'FontName', 'Arial','FontSize',12, 'FontWeight','bold');
 saveas(gcf,strcat('WVS_',results{1,INDX_FILENAME}(1:11)),'epsc');
 
+%% LEARNING PLOTS: (change this title) R2 of trial bins
+[NUM_DATASETS,~] = size(results);
+
+figure
+xlabel('Trial bin')
+ylabel('R2')
+for d = 1:NUM_DATASETS
+    trials = results{d,INDX_TRIAL_BIN};
+    [NUM_TRIALS,~] = size(trials);
+    hold all
+    r2 = cell2mat(trials(:,INDX_R2));
+    r2(r2==1) = nan;
+    plot(r2,'--.','MarkerSize',26)
+    ax = gca;
+    set(ax,'XTick', 1:NUM_TRIALS)
+    
+%     set(ax,'XLabel','hi')
+    
+%     text(1,.8,'R2 values', 'FontName', 'Arial','FontSize',12, 'FontWeight','bold');    
+end
+legend('show')
+
+%% LEARNING PLOTS: (change this title) R2 of trial bins with DAYS on X
+[NUM_DATASETS,~] = size(results);
+trial_data = [];
+
+figure
+xlabel('Day')
+ylabel('R2')
+for d = 1:NUM_DATASETS
+    trials = results{d,INDX_TRIAL_BIN};
+    [NUM_TRIALS,~] = size(trials);
+    for t = 1:NUM_TRIALS
+        trial_data(t,d) = cell2mat(trials(t,INDX_R2));
+    end
+end
+trial_data(~trial_data) = nan;
+trial_data(trial_data==1) = nan;
+for t = 1:NUM_TRIALS
+    hold all
+    plot(trial_data(t,:), '.','MarkerSize', 26)
+end
+ax = gca;
+set(ax,'XTick', 1:NUM_DATASETS)
+legend('show')
+
+%% LEARNING PLOTS: (change this title) VS of trial bins
+[NUM_DATASETS,~] = size(results);
+
+figure
+xlabel('Trial bin')
+ylabel('VS')
+for d = 1:NUM_DATASETS
+    trials = results{d,INDX_TRIAL_BIN};
+    [NUM_TRIALS,~] = size(trials);
+    hold all
+    vs = cell2mat(trials(:,INDX_VS));
+%     vs(vs==1) = nan;
+    plot(vs,'--.','MarkerSize',26)
+    ax = gca;
+    set(ax,'XTick', 1:NUM_TRIALS)
+    
+%     set(ax,'XLabel','hi')
+    
+%     text(1,.8,'R2 values', 'FontName', 'Arial','FontSize',12, 'FontWeight','bold');    
+end
+legend('show')
+
+%% LEARNING PLOTS: (change this title) VS of trial bins with DAYS on X
+[NUM_DATASETS,~] = size(results);
+trial_data = [];
+
+figure
+xlabel('Day')
+ylabel('VS')
+for d = 1:NUM_DATASETS
+    trials = results{d,INDX_TRIAL_BIN};
+    [NUM_TRIALS,~] = size(trials);
+    for t = 1:NUM_TRIALS
+        trial_data(t,d) = cell2mat(trials(t,INDX_VS));
+    end
+end
+trial_data(trial_data==0) = nan;
+% trial_data(trial_data==1) = nan;
+for t = 1:NUM_TRIALS
+    hold all
+    plot(trial_data(t,:), '.','MarkerSize', 26)
+end
+ax = gca;
+set(ax,'XTick', 1:NUM_DATASETS)
+legend('show')
+
+
+
 %% PLOT add-on: Plot all bootstrapped arrows
 for j = 1:NUM_SIMS
     plotX = ones(96,3);
