@@ -32,6 +32,23 @@ function BAM = compute_BAM(data, NUM_ELEC, START_TIME, END_TIME, REMOVE)
         if exist('cHat','var') && ~any(i == REMOVE) %tossing out electrodes
             BAM(i) = cHat(4); %I don't think I need this here+ START_TIME - 1;
 %             cHat(4)
+
+            
+
+            %% PLOT: To visualize (debugging purposes), plot BAT
+%             logitc = @(x, c) (c(1) - c(2)) ./ (1 + exp(-c(3) .* (x - c(4)))) + c(2);
+%             plot(trial_average,'LineWidth',4) 
+% 
+%             hold on
+%             plot(logitc(x, cHat), 'r')
+%             line([cHat(4) - START_TIME cHat(4) - START_TIME],get(gca,'ylim'),'Color','g');
+%             cHat(4)
+%             hold off
+%             pause;
+
+
+
+
         end
 %         if exist('cHatTest','var') && ~any(i == REMOVE)
 %             BAMT(i) = cHatTest(4);

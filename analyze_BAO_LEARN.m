@@ -30,7 +30,7 @@ INDX_TRIAL_BIN = 9;
 %%
 for d = 1:size(DATASETS,1)
     %% FOR TESTING PURPOSES
-%     d = 1;
+    d = 2;
     %% Set Constants
     clearvars -except d results chan2rc DATASETS INDX*
     NUM_ELEC = 96;
@@ -53,7 +53,7 @@ for d = 1:size(DATASETS,1)
     
     %% Compute empirical BAM
     'Computing BAM'
-    beta_attn_med = compute_BAM(all_electrodes(:,:,:), NUM_ELEC, START_TIME, END_TIME, [82]);
+    beta_attn_med = compute_BAeM(all_electrodes(:,:,:), NUM_ELEC, START_TIME, END_TIME, [82]);
     
     %% Compute empirical BAT
     'Computing BAT'
@@ -65,7 +65,7 @@ for d = 1:size(DATASETS,1)
     results{d,INDX_BAT} = beta_attn_times;
     
     %% Chan2RC preparation 1/2 (needs internet)
-%     chan2rc = makechan2rc_mac('y','mio');
+    chan2rc = makechan2rc_mac('y','mio');
     
     %% Chan2RC preparation 2/2 (doesn't need internet)
     plot_this_matrix = zeros(10,10);
@@ -106,12 +106,12 @@ for d = 1:size(DATASETS,1)
     TRIAL_RANGE = 1:NUM_TRIALS;
     %Simulation actually calculates BAM; estimation is necessary with
     %smaller BINS. 
-    bootstrapped_BAM = simulate_BAT(all_electrodes,NUM_ELEC, TRIAL_RANGE, NUM_SIMS, BIN, START_TIME, END_TIME,[82]);
+    [bootstrapped_BAM,bootstrapped_trials] = simulate_BAT(all_electrodes,NUM_ELEC, TRIAL_RANGE, NUM_SIMS, BIN, START_TIME, END_TIME,[82]);
     
     %% Convert zeros to NaN
     bootstrapped_BAM(~bootstrapped_BAM) = nan;
     
-    %% BAT Bootstrap Plot Prep
+    %% BAT Bootstrap Plot Prep (I don't think this does anything here)
     plot_this_matrix_bootstrap = zeros(10,10,NUM_SIMS);
     for i=1:128
         for j=1:NUM_SIMS
@@ -127,10 +127,17 @@ for d = 1:size(DATASETS,1)
     plotB = ones(96,3);
     plotB(:,2) = chan2rc(1:96,1);
     plotB(:,3) = chan2rc(1:96,2);
+    indx_trials_with_high_r2 = []
+    num_qual = 0;
     for i = 1:NUM_SIMS
         ds_b = dataset(bootstrapped_BAM(:,i), plotB(:,2),plotB(:,3), 'VarNames', {'BAT','X','Y'});
         simulated_model = LinearModel.fit(ds_b, 'BAT~X+Y');
         R2_b = simulated_model.Rsquared.Ordinary;
+        if R2_b > .25
+            R2_b
+            indx_trials_with_high_r2 = [indx_trials_with_high_r2; i];
+            num_qual = num_qual + 1
+        end
         coefs_b = simulated_model.Coefficients.Estimate;
         coefs_b_norm = norm([(coefs_b(3)/2),(coefs_b(2)/2)]);
         if ~exist('BAO_b_coef','var')
@@ -139,6 +146,57 @@ for d = 1:size(DATASETS,1)
             BAO_b_coef = [BAO_b_coef; {coefs_b filename R2_b 'angle'}];
         end
     end
+    
+    %% Testing VS
+    for q = 1:size(indx_trials_with_high_r2,1)
+%         z
+        z = indx_trials_with_high_r2(q);
+        coefs_b = cell2mat(BAO_b_coef(z,1));
+        t_filename = char(BAO_b_coef(z,2));
+        coefs_b_norm = norm([(coefs_b(3)/2),(coefs_b(2)/2)]);
+        x = ((coefs_b(3)/2)/coefs_b_norm);
+        y = ((coefs_b(2)/2)/coefs_b_norm);
+        %index 3 is the R2 of the vector 
+        r2_b = cell2mat(BAO_b_coef(z,3));
+%         r2_b
+%         'hi'
+%         x
+        %index 4 is the angle of the vector in radians
+        BAO_b_coef(z,4) = {acos(x)};    
+    end
+    vs = vectorStrength(cell2mat(BAO_b_coef(indx_trials_with_high_r2,4)));
+    wvs = weightedVectorStrength(cell2mat(BAO_b_coef(indx_trials_with_high_r2,4)),cell2mat(BAO_b_coef(indx_trials_with_high_r2,3)));
+    
+    
+    %% Testing VS
+    other_indices = [];
+
+    for q = 1:1000
+%         z
+        if any(q == [indx_trials_with_high_r2])
+            continue
+            'pass'
+        end
+        other_indices = [other_indices; q];
+        z = q;
+        coefs_b = cell2mat(BAO_b_coef(z,1));
+        t_filename = char(BAO_b_coef(z,2));
+        coefs_b_norm = norm([(coefs_b(3)/2),(coefs_b(2)/2)]);
+        x = ((coefs_b(3)/2)/coefs_b_norm);
+        y = ((coefs_b(2)/2)/coefs_b_norm);
+        %index 3 is the R2 of the vector 
+        r2_b = cell2mat(BAO_b_coef(z,3));
+%         r2_b
+%         'hi'
+%         x
+        %index 4 is the angle of the vector in radians
+        BAO_b_coef(z,4) = {acos(x)};    
+    end
+    vs = vectorStrength(cell2mat(BAO_b_coef(other_indices,4)));
+    wvs = weightedVectorStrength(cell2mat(BAO_b_coef(other_indices,4)),cell2mat(BAO_b_coef(other_indices,3)));
+    
+    
+    
     
     %% Compute VS and WVS from Simulation.
     'Computing VS and WVS from Simulation'

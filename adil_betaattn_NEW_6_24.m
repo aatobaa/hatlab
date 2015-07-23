@@ -159,6 +159,57 @@ end
 
 
 %% PLOT: Compute BAO and plot 10x10 square color-plot of BAT
+
+%For using other data:
+for z = 1:100 %(Number of simulations)
+    z
+    for i=1:128
+        if i <= NUM_ELEC
+            index = chan2rc(i,:);
+            plot_this_matrix(index(2),-index(1)+11) = bootstrapped_BAM(i,z);
+        end
+    end
+
+    close all;
+    hold on;
+    axis off;
+    axis square;
+    axis([1 10 1 10]);
+
+    % caxis([2100 2600]);
+    for i=1:10
+        for j=1:10
+            c = plot_this_matrix(i,j);
+            if ~isnan(c) && c~=0
+                scatter(i,j,500,c,'filled');
+                elec_num = find(chan2rc(:,2)==i & chan2rc(:,1) == -(j-11));
+                %text(i,j,num2str(elec_num)); %Labels which electrode is each plotted circle
+            end
+        end
+    end
+    ds_b = dataset(bootstrapped_BAM(:,z), plotB(:,2),plotB(:,3), 'VarNames', {'BAT','X','Y'});
+    simulated_model = LinearModel.fit(ds_b, 'BAT~X+Y');
+    R2_b = simulated_model.Rsquared.Ordinary;
+    coefs_b = simulated_model.Coefficients.Estimate;
+    coefs_b_norm = norm([(coefs_b(3)/2),(coefs_b(2)/2)]);
+
+    R2_b
+    %5.5 is the center of a plot with axis from 1 to 10; 10-1 = 9 / 2 = 4.5 + 1
+    % WHY IS THE Y-COORDINATE BEING SUBTRACTED HERE? 
+    arrow([5.5,5.5],[5.5+((coefs_b(3)/2)/coefs_b_norm)*(R2_b*4.5),5.5-((coefs_b(2)/2)/coefs_b_norm)*(R2_b*4.5)],'Width',3);
+
+%     if ~exist('BAO_coef','var')
+%         BAO_coef = {coefs filename R2 'angle'};
+%     else
+%         BAO_coef = [BAO_coef; {coefs filename R2 'angle'}];
+%     end
+
+    % set(get(colorbar),'Location','southoutside');\
+    c_bar = colorbar('southoutside');
+    set(get(c_bar, 'xlabel'), 'string', 'time (ms)')
+    pause
+end
+%%
 close all;
 hold on;
 axis off;
