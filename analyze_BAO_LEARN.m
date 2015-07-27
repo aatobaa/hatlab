@@ -351,10 +351,10 @@ for d = 1:size(DATASETS,1)
     
     %%
     strcat('Finished Dataset ', filename, ' Press any key to continue.')
-    pause
 end
 %%
 
+save('youke_results', 'results')
 
 
 
