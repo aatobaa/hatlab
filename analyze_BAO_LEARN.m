@@ -53,7 +53,7 @@ for d = 1:size(DATASETS,1)
     
     %% Compute empirical BAM
     'Computing BAM'
-    beta_attn_med = compute_BAeM(all_electrodes(:,:,:), NUM_ELEC, START_TIME, END_TIME, [82]);
+    beta_attn_med = compute_BAM(all_electrodes(:,:,:), NUM_ELEC, START_TIME, END_TIME, [82]);
     
     %% Compute empirical BAT
     'Computing BAT'
