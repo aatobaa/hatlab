@@ -1,39 +1,43 @@
-%'results' is of the form:
-% {'filename' BAM BAT model R2 PValue VS WVS {nx8 cell}}
-%'{nx8 cell}' is of the form:
-% {'set of trials' BAM BAT model R2 PValue VS WVS}
-
-%List of Datasets:
-%Datasets for Youke:
-DATASETS = ['M1TM_20111014'; 'M1TM_20111017'; 'M1TM_20111019'; 'M1TM_20111021'; 'M1TM_20111025'];
-%Datasets for Big Papi:
-% DATASETS = ['M1TM_20101020'; 'M1TM_20101021'; '20101022'; 'M1TM_20101025'; 'M1TM_20101026'; 'M1TM_20101028'];
-% DATASETS = [];
-
-results = cell(size(DATASETS,1),9);
-
-%Eventually want to add P-Values for weighted and unweighted vector
-%strengths (currently simulating to calculate them every time).
-
-%Indices for the cell of results.
-INDX_FILENAME = 1;
-INDX_BAM = 2;
-INDX_BAT = 3;
-INDX_MODEL = 4;
-INDX_R2 = 5;
-INDX_PValue = 6;
-INDX_VS = 7;
-INDX_WVS = 8;
-INDX_TRIAL_BIN = 9;
-
-%Remember to initialize results to have the # of indices created. 
-
-%%
-for d = 1:size(DATASETS,1)
+function analyze_BAO_LEARN(filename)
+% for d = 1:size(DATASETS,1)
+    d = 1;
     %% FOR TESTING PURPOSES
 %     d = 2;
-    %% Set Constants
-    clearvars -except d results chan2rc DATASETS INDX*
+            %% Set Constants
+            %'results' is of the form:
+        % {'filename' BAM BAT model R2 PValue VS WVS {nx8 cell}}
+        %'{nx8 cell}' is of the form:
+        % {'set of trials' BAM BAT model R2 PValue VS WVS}
+
+        %List of Datasets:
+        %Datasets for Youke:
+%         DATASETS = ['M1TM_20111014'; 'M1TM_20111017'; 'M1TM_20111019'; 'M1TM_20111021'; 'M1TM_20111025'];
+        %Datasets for Big Papi:
+        % DATASETS = ['M1TM_20101020'; 'M1TM_20101021'; '20101022'; 'M1TM_20101025'; 'M1TM_20101026'; 'M1TM_20101028'];
+        % DATASETS = [];
+
+%         results = cell(size(DATASETS,1),9);
+        results = cell(1,9);
+
+        %Eventually want to add P-Values for weighted and unweighted vector
+        %strengths (currently simulating to calculate them every time).
+
+        %Indices for the cell of results.
+        INDX_FILENAME = 1;
+        INDX_BAM = 2;
+        INDX_BAT = 3;
+        INDX_MODEL = 4;
+        INDX_R2 = 5;
+        INDX_PValue = 6;
+        INDX_VS = 7;
+        INDX_WVS = 8;
+        INDX_TRIAL_BIN = 9;
+
+        %Remember to initialize results to have the # of indices created. 
+
+        %%
+
+    clearvars -except d results chan2rc DATASETS INDX* filename
     NUM_ELEC = 96;
     NUM_OBS = 4001;
     %PEAK_FRQ Should be calculated again via power spectrum
@@ -45,7 +49,7 @@ for d = 1:size(DATASETS,1)
     %Segment of the data to use for computing BAT and BAM
     START_TIME = 500;
     END_TIME = 3500;   
-    filename = DATASETS(d,:);
+%     filename = DATASETS(d,:);
     results{d,INDX_FILENAME} = filename;
     
     %% Build Data
@@ -351,11 +355,9 @@ for d = 1:size(DATASETS,1)
     
     
     %%
-    strcat('Finished Dataset ', filename, ' Press any key to continue.')
+%     strcat('Finished Dataset ', filename, ' Press any key to continue.')
+    save(strcat('youke_results_',filename), 'results')
 end
-%%
-
-save('youke_results', 'results')
 
 
 
