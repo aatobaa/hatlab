@@ -1,10 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=example_sbatch
-#SBATCH --output=example_sbatch.out
-#SBATCH --error=example_sbatch.err
-#SBATCH --time=00:05:00
+#SBATCH --job-name=example_sbatch_bp
+#SBATCH --output=example_sbatch_bp.out
+#SBATCH --error=example_sbatch_bp.err
+#SBATCH --time=24:00:00
 #SBATCH --partition=sandyb
-#SBATCH --nodes=4
-#SBATCH --ntasks-per-node=16
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
 
-module avail
+module load matlab
+matlab -nodisplay -r 'analyze_BAO_LEARN M1TM_20111014; exit;'
