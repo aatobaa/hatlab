@@ -11,7 +11,7 @@ function analyze_BAO_LEARN(filename)
 
         %List of Datasets:
         %Datasets for Youke:
-%         DATASETS = ['M1TM_20111014'; 'M1TM_20111017'; 'M1TM_20111019'; 'M1TM_20111021'; 'M1TM_20111025'];
+        DATASETS = ['M1TM_20111014'; 'M1TM_20111017'; 'M1TM_20111019'; 'M1TM_20111021'; 'M1TM_20111025'];
         %Datasets for Big Papi:
         % DATASETS = ['M1TM_20101020'; 'M1TM_20101021'; '20101022'; 'M1TM_20101025'; 'M1TM_20101026'; 'M1TM_20101028'];
         % DATASETS = [];
@@ -49,7 +49,7 @@ function analyze_BAO_LEARN(filename)
     %Segment of the data to use for computing BAT and BAM
     START_TIME = 500;
     END_TIME = 3500;   
-%     filename = DATASETS(d,:);
+    filename = DATASETS(d,:);
     results{d,INDX_FILENAME} = filename;
     
     %% Build Data

@@ -7,6 +7,14 @@
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% CONSTANTS 
+
+%Datasets for Youke:
+DATASETS = ['M1TM_20111014'; 'M1TM_20111017'; 'M1TM_20111019'; 'M1TM_20111021'; 'M1TM_20111025'];
+%Datasets for Big Papi:
+% DATASETS = ['M1TM_20101020'; 'M1TM_20101021'; 'M1TM_20101022'; 'M1TM_20101025'; 'M1TM_20101026'; 'M1TM_20101028'];
+        
+
+
 NUM_ELEC = 96;
 NUM_OBS = 4001;
 %PEAK_FRQ Should be calculated again via power spectrum
@@ -20,6 +28,15 @@ START_TIME = 500;
 END_TIME = 3500;   
 %%
 
+INDX_FILENAME = 1;
+INDX_BAM = 2;
+INDX_BAT = 3;
+INDX_MODEL = 4;
+INDX_R2 = 5;
+INDX_PValue = 6;
+INDX_VS = 7;
+INDX_WVS = 8;
+INDX_TRIAL_BIN = 9;
 
 %% PLOT: BAT_PLOT_M1TM_20111014
 %Produce a BAT 10x10 plot for all datasets 
@@ -57,7 +74,7 @@ for d = 1:size(DATASETS,1)
     % caxis([2100 2600]);
     for i=1:10
         for j=1:10
-            c = plot_this_matrix_BAT(i,j);
+            c = plot_this_matrix_BAM(i,j);
             if ~isnan(c) && c~=0
                 scatter(i,j,500,c,'filled');
                 elec_num = find(chan2rc(:,2)==i & chan2rc(:,1) == -(j-11));
@@ -74,7 +91,7 @@ for d = 1:size(DATASETS,1)
     % WHY IS THE Y-COORDINATE BEING SUBTRACTED HERE? 
     arrow([5.5,5.5],[5.5+((coefs(3)/2)/coefs_norm)*(R2*4.5),5.5-((coefs(2)/2)/coefs_norm)*(R2*4.5)],'Width',3);
 
-    % set(get(colorbar),'Location','southoutside');\
+    % set(get(colorbar),'Location','southoutside');
     c_bar = colorbar('southoutside');
     set(get(c_bar, 'xlabel'), 'string', 'time (ms)')
 
@@ -281,8 +298,8 @@ for d = 1:NUM_DATASETS
         trial_data(t,d) = cell2mat(trials(t,INDX_R2));
     end
 end
-trial_data(~trial_data) = nan;
-trial_data(trial_data==1) = nan;
+% trial_data(~trial_data) = nan;
+% trial_data(trial_data==1) = nan;
 for t = 1:NUM_TRIALS
     hold all
     plot(trial_data(t,:), '.','MarkerSize', 26)
@@ -386,3 +403,73 @@ end
 %Look at the power spectrum across all electrodes to find the peak in beta
 %(make sure it's 18). Vim's
 %book. 
+
+
+
+%% PLOT: BAT_PLOT_M1TM_20111014
+%Produce a BAT 10x10 plot for all datasets 
+for d = 1:size(DATASETS,1)
+
+    %% Preallocate
+    plot_this_matrix_BAM = zeros(10,10);
+    plot_this_matrix_BAT = zeros(10,10);
+
+    %% BAM Plot Prep
+    for i=1:128
+        if i <= NUM_ELEC
+            index = chan2rc(i,:);
+            plot_this_matrix_BAM(index(2),-index(1)+11) = results{d,INDX_BAM}(i);
+        end
+    end
+    %% BAT Plot Prep
+    for i=1:128
+        if i <= NUM_ELEC
+            index = chan2rc(i,:);
+            plot_this_matrix_BAT(index(2),-index(1)+11) = results{d,INDX_BAT}(i);
+        end
+    end
+    
+    %% Convert 0 to NaN for color plot 
+%     results{d,INDX_BAT}(~results{d,INDX_BAT}) = nan; %Turn the zeros into nans so they don't screw up the color plot
+%     results{d,INDX_BAM}(~results{d,INDX_BAM}) = nan;
+    %% Make plot
+    close all;
+    hold on;
+    axis off;
+    axis square;
+    axis([1 10 1 10]);
+    cmin = min(results{d,INDX_BAT});
+    cmax = max(results{d,INDX_BAT});
+    
+    caxis([cmin cmax]);
+    colormap(flipud(gray));
+    set(gcf,'color','w');
+    for i=1:10
+        for j=1:10
+            c = plot_this_matrix_BAT(i,j);
+            if ~isnan(c) && c~=0
+                scatter(i,j,1500,c,'filled');
+                elec_num = find(chan2rc(:,2)==i & chan2rc(:,1) == -(j-11));
+                %text(i,j,num2str(elec_num)); %Labels which electrode is each plotted circle
+            end
+        end
+    end
+    %% Compute BAO and place arrow
+    model = results{d, INDX_MODEL};
+    coefs = model.Coefficients.Estimate;
+    coefs_norm = norm([(coefs(3)/2),(coefs(2)/2)]);
+    R2 = results{d,INDX_R2};
+    %5.5 is the center of a plot with axis from 1 to 10; 10-1 = 9 / 2 = 4.5 + 1
+    % WHY IS THE Y-COORDINATE BEING SUBTRACTED HERE? 
+    arrow([5.5,5.5],[5.5+((coefs(3)/2)/coefs_norm)*(R2*4.5),5.5-((coefs(2)/2)/coefs_norm)*(R2*4.5)],'Width',3);
+
+    % set(get(colorbar),'Location','southoutside');\
+    c_bar = colorbar('southoutside');
+    set(get(c_bar, 'xlabel'), 'string', 'time (ms)')
+
+    saveas(gcf,strcat('BAT_PLOT_',results{d,INDX_FILENAME}),'epsc');
+
+    % NOTE: MODEL IS ONLY COMPUTED FOR BAT; NOT BAM. 
+     
+end
+

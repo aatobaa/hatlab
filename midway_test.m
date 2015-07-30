@@ -1,1 +1,3 @@
-'Successfully outputted the script'
+function midway_test(hello)
+    hello
+end
