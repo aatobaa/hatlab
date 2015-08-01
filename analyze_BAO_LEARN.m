@@ -11,13 +11,13 @@ function analyze_BAO_LEARN(filename)
 
         %List of Datasets:
         %Datasets for Youke:
-        DATASETS = ['M1TM_20111014'; 'M1TM_20111017'; 'M1TM_20111019'; 'M1TM_20111021'; 'M1TM_20111025'];
+%         DATASETS = ['M1TM_20111014'; 'M1TM_20111017'; 'M1TM_20111019'; 'M1TM_20111021'; 'M1TM_20111025'];
         %Datasets for Big Papi:
         % DATASETS = ['M1TM_20101020'; 'M1TM_20101021'; '20101022'; 'M1TM_20101025'; 'M1TM_20101026'; 'M1TM_20101028'];
         % DATASETS = [];
 
-%         results = cell(size(DATASETS,1),9);
-        results = cell(1,9);
+%         results = cell(size(DATASETS,1),10);
+        results = cell(1,10);
 
         %Eventually want to add P-Values for weighted and unweighted vector
         %strengths (currently simulating to calculate them every time).
@@ -29,9 +29,10 @@ function analyze_BAO_LEARN(filename)
         INDX_MODEL = 4;
         INDX_R2 = 5;
         INDX_PValue = 6;
-        INDX_VS = 7;
-        INDX_WVS = 8;
-        INDX_TRIAL_BIN = 9;
+        INDX_BAO_COEF = 7;
+        INDX_VS = 8;
+        INDX_WVS = 9;
+        INDX_TRIAL_BIN = 10;
 
         %Remember to initialize results to have the # of indices created. 
 
@@ -49,7 +50,7 @@ function analyze_BAO_LEARN(filename)
     %Segment of the data to use for computing BAT and BAM
     START_TIME = 500;
     END_TIME = 3500;   
-    filename = DATASETS(d,:);
+%     filename = DATASETS(d,:);
     results{d,INDX_FILENAME} = filename;
     
     %% Build Data
@@ -72,17 +73,6 @@ function analyze_BAO_LEARN(filename)
     %% Chan2RC preparation 1/2 (needs internet)
     chan2rc = makechan2rc_mac('y','mio');
     
-    %% Chan2RC preparation 2/2 (doesn't need internet)
-    plot_this_matrix = zeros(10,10);
-    
-    %% BAT Plot Prep
-    for i=1:128
-        if i <= NUM_ELEC
-            index = chan2rc(i,:);
-            plot_this_matrix(index(2),-index(1)+11) = beta_attn_times(i);
-        end
-    end
-
     %% Convert 0 to NaN for color plot 
     beta_attn_times(~beta_attn_times) = nan; %Turn the zeros into nans so they don't screw up the color plot
     beta_attn_med(~beta_attn_med) = nan;
@@ -92,9 +82,9 @@ function analyze_BAO_LEARN(filename)
     plotX = ones(96,3);
     plotX(:,2) = chan2rc(1:96,1);
     plotX(:,3) = chan2rc(1:96,2);
-    ds = dataset(beta_attn_times, plotX(:,2),plotX(:,3), 'VarNames', {'BAT','X','Y'});
+    ds = dataset(beta_attn_med, plotX(:,2),plotX(:,3), 'VarNames', {'BAM','X','Y'});
     model = strcat('model_',filename);
-    eval(strcat(model, ' = LinearModel.fit(ds, ''BAT~X+Y'');'));
+    eval(strcat(model, ' = LinearModel.fit(ds, ''BAM~X+Y'');'));
     R2 = eval(strcat(model,'.Rsquared.Ordinary'));
     F = (eval(strcat(model,'.SSR / ',model,'.NumPredictors', '/ ',model,'.MSE')));
     pValue = 1 - fcdf(F, eval(strcat(model,'.NumPredictors')), eval(strcat(model,'.DFE')));
@@ -107,7 +97,7 @@ function analyze_BAO_LEARN(filename)
     %% Simulation: Simulate to compute Vector Strength of empirical 
     'Simulating'
     NUM_SIMS = 1000;
-    BIN = 50;
+    BIN = round(NUM_TRIALS/4);
     TRIAL_RANGE = 1:NUM_TRIALS;
     %Simulation actually calculates BAM; estimation is necessary with
     %smaller BINS. 
@@ -116,27 +106,16 @@ function analyze_BAO_LEARN(filename)
     %% Convert zeros to NaN
     bootstrapped_BAM(~bootstrapped_BAM) = nan;
     
-    %% BAT Bootstrap Plot Prep (I don't think this does anything here)
-    plot_this_matrix_bootstrap = zeros(10,10,NUM_SIMS);
-    for i=1:128
-        for j=1:NUM_SIMS
-            if i <= NUM_ELEC
-                index = chan2rc(i,:);
-                plot_this_matrix_bootstrap(index(2),-index(1)+11,j) = bootstrapped_BAM(i,j);
-            end
-        end
-    end
-    
     %% Fit Linear Model for Bootstrapped Data
     'Fitting Linear Model for Bootstrapped Data'
     plotB = ones(96,3);
     plotB(:,2) = chan2rc(1:96,1);
     plotB(:,3) = chan2rc(1:96,2);
-    indx_trials_with_high_r2 = []
-    num_qual = 0;
+%     indx_trials_with_high_r2 = []
+%     num_qual = 0;
     for i = 1:NUM_SIMS
-        ds_b = dataset(bootstrapped_BAM(:,i), plotB(:,2),plotB(:,3), 'VarNames', {'BAT','X','Y'});
-        simulated_model = LinearModel.fit(ds_b, 'BAT~X+Y');
+        ds_b = dataset(bootstrapped_BAM(:,i), plotB(:,2),plotB(:,3), 'VarNames', {'BAM','X','Y'});
+        simulated_model = LinearModel.fit(ds_b, 'BAM~X+Y');
         R2_b = simulated_model.Rsquared.Ordinary;
 %         if R2_b > .25
 %             R2_b
@@ -144,14 +123,14 @@ function analyze_BAO_LEARN(filename)
 %             num_qual = num_qual + 1
 %         end
         coefs_b = simulated_model.Coefficients.Estimate;
-        coefs_b_norm = norm([(coefs_b(3)/2),(coefs_b(2)/2)]);
+%         coefs_b_norm = norm([(coefs_b(3)/2),(coefs_b(2)/2)]);
         if ~exist('BAO_b_coef','var')
             BAO_b_coef = {coefs_b filename R2_b 'angle'};
         else
             BAO_b_coef = [BAO_b_coef; {coefs_b filename R2_b 'angle'}];
         end
     end
-    
+        
     %% Testing VS
 %     for q = 1:size(indx_trials_with_high_r2,1)
 % %         z
@@ -222,17 +201,18 @@ function analyze_BAO_LEARN(filename)
     end
     
     %% Add Vector Strength and Weighted Vector Strength to results
+    results{d, INDX_BAO_COEF} = BAO_b_coef;
     results{d,INDX_VS} = vs;
     results{d,INDX_WVS} = wvs;
     
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
- %%%%% Repeat Analysis by breaking data into trial bins %%%%%%%%%%
+ %%%%% Repeat Analysis by breaking data into early and late trials %%%%%%%%%%
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    BIN = 50;
+    BIN = round(NUM_TRIALS/3) -1;
     endpnts = 1:BIN:NUM_TRIALS;
-    results{d,INDX_TRIAL_BIN} = cell(floor(NUM_TRIALS/BIN),8);
+    results{d,INDX_TRIAL_BIN} = cell(floor(NUM_TRIALS/BIN),9);
     %%
     for k = 1:size(endpnts,2)-1
         binned_trials = endpnts(k):endpnts(k+1);
@@ -255,17 +235,6 @@ function analyze_BAO_LEARN(filename)
         %% Chan2RC preparation 1/2 (needs internet)
 %         chan2rc = makechan2rc_mac('y','mio');
 
-        %% Chan2RC preparation 2/2 (doesn't need internet)
-        plot_this_matrix = zeros(10,10);
-
-        %% BAT Plot Prep
-        for i=1:128
-            if i <= NUM_ELEC
-                index = chan2rc(i,:);
-                plot_this_matrix(index(2),-index(1)+11) = beta_attn_times(i);
-            end
-        end
-
         %% Convert 0 to NaN for color plot 
         beta_attn_times(~beta_attn_times) = nan; %Turn the zeros into nans so they don't screw up the color plot
         beta_attn_med(~beta_attn_med) = nan;
@@ -275,9 +244,9 @@ function analyze_BAO_LEARN(filename)
         plotX = ones(96,3);
         plotX(:,2) = chan2rc(1:96,1);
         plotX(:,3) = chan2rc(1:96,2);
-        ds = dataset(beta_attn_times, plotX(:,2),plotX(:,3), 'VarNames', {'BAT','X','Y'});
+        ds = dataset(beta_attn_med, plotX(:,2),plotX(:,3), 'VarNames', {'BAM','X','Y'});
         model = strcat('model_',filename);
-        eval(strcat(model, ' = LinearModel.fit(ds, ''BAT~X+Y'');'));
+        eval(strcat(model, ' = LinearModel.fit(ds, ''BAM~X+Y'');'));
         R2 = eval(strcat(model,'.Rsquared.Ordinary'));
         F = (eval(strcat(model,'.SSR / ',model,'.NumPredictors', '/ ',model,'.MSE')));
         pValue = 1 - fcdf(F, eval(strcat(model,'.NumPredictors')), eval(strcat(model,'.DFE')));
@@ -290,7 +259,7 @@ function analyze_BAO_LEARN(filename)
         %% Simulation: Simulate
         'Simulating'
         NUM_SIMS = 1000;
-        BIN = 30;
+        BIN = round((NUM_TRIALS/3)/2);
         TRIAL_RANGE = binned_trials;
         %Simulation actually calculates BAM; estimation is necessary with
         %smaller BINS. 
@@ -298,17 +267,6 @@ function analyze_BAO_LEARN(filename)
 
         %% Convert zeros to NaN
         bootstrapped_BAM(~bootstrapped_BAM) = nan;
-
-        %% BAT Bootstrap Plot Prep
-        plot_this_matrix_bootstrap = zeros(10,10,NUM_SIMS);
-        for i=1:128
-            for j=1:NUM_SIMS
-                if i <= NUM_ELEC
-                    index = chan2rc(i,:);
-                    plot_this_matrix_bootstrap(index(2),-index(1)+11,j) = bootstrapped_BAM(i,j);
-                end
-            end
-        end
 
         %% Fit Linear Model for Bootstrapped Data
         'Fitting Linear Model for Bootstrapped Data'
@@ -320,7 +278,7 @@ function analyze_BAO_LEARN(filename)
             simulated_model = LinearModel.fit(ds_b, 'BAT~X+Y');
             R2_b = simulated_model.Rsquared.Ordinary;
             coefs_b = simulated_model.Coefficients.Estimate;
-            coefs_b_norm = norm([(coefs_b(3)/2),(coefs_b(2)/2)]);
+%             coefs_b_norm = norm([(coefs_b(3)/2),(coefs_b(2)/2)]);
             if ~exist('BAO_bin_coef','var')
                 BAO_bin_coef = {coefs_b filename R2_b 'angle'};
             else
@@ -345,11 +303,12 @@ function analyze_BAO_LEARN(filename)
                 wvs = weightedVectorStrength(cell2mat(BAO_bin_coef(:,4)),cell2mat(BAO_bin_coef(:,3)));
             end
         end
-        clear BAO_bin_coef
 
         %% Add Vector Strength and Weighted Vector Strength to results
+        results{d,INDX_TRIAL_BIN}{k,INDX_BAO_COEF} = BAO_bin_coef;
         results{d,INDX_TRIAL_BIN}{k,INDX_VS} = vs;
         results{d,INDX_TRIAL_BIN}{k,INDX_WVS} = wvs;
+        clear BAO_bin_coef
 
     end
     
