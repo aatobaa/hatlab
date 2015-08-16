@@ -80,7 +80,9 @@ function analyze_BAO_LEARN(filename)
     %% Fit Linear Model and Compute Statistics
     'Fitting Linear Model'
     plotX = ones(96,3);
+    %Column 1 of chan2rc represents x coordinates
     plotX(:,2) = chan2rc(1:96,1);
+    %Column 2 of chan2rc represents y coordinates
     plotX(:,3) = chan2rc(1:96,2);
     ds = dataset(beta_attn_med, plotX(:,2),plotX(:,3), 'VarNames', {'BAM','X','Y'});
     model = strcat('model_',filename);
