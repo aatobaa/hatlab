@@ -9,7 +9,7 @@
 %% CONSTANTS 
 
 %Datasets for Youke:
-DATASETS = ['M1TM_20111014'; 'M1TM_20111017'; 'M1TM_20111019'; 'M1TM_20111021'; 'M1TM_20111025'];
+DATASETS = ['M1TM_20111010'; 'M1TM_20111014'; 'M1TM_20111017'; 'M1TM_20111019'; 'M1TM_20111021'; 'M1TM_20111025'];
 %Datasets for Big Papi:
 % DATASETS = ['M1TM_20101020'; 'M1TM_20101021'; 'M1TM_20101022'; 'M1TM_20101025'; 'M1TM_20101026'; 'M1TM_20101028'];
         
@@ -34,17 +34,18 @@ INDX_BAT = 3;
 INDX_MODEL = 4;
 INDX_R2 = 5;
 INDX_PValue = 6;
-INDX_VS = 7;
-INDX_WVS = 8;
-INDX_TRIAL_BIN = 9;
 
-%% PLOT: BAT_PLOT_M1TM_20111014
+INDX_VS = 8;
+INDX_WVS = 9;
+INDX_TRIAL_BIN = 10;
+
+%% PLOT: BAM_PLOT_M1TM_20111014
 %Produce a BAT 10x10 plot for all datasets 
 for d = 1:size(DATASETS,1)
 
     %% Preallocate
     plot_this_matrix_BAM = zeros(10,10);
-    plot_this_matrix_BAT = zeros(10,10);
+%     plot_this_matrix_BAT = zeros(10,10);
 
     %% BAM Plot Prep
     for i=1:128
@@ -53,25 +54,37 @@ for d = 1:size(DATASETS,1)
             plot_this_matrix_BAM(index(2),-index(1)+11) = results{d,INDX_BAM}(i);
         end
     end
-    %% BAT Plot Prep
-    for i=1:128
-        if i <= NUM_ELEC
-            index = chan2rc(i,:);
-            plot_this_matrix_BAT(index(2),-index(1)+11) = results{d,INDX_BAT}(i);
-        end
-    end
+%     %% BAT Plot Prep
+%     for i=1:128
+%         if i <= NUM_ELEC
+%             index = chan2rc(i,:);
+%             plot_this_matrix_BAT(index(2),-index(1)+11) = results{d,INDX_BAT}(i);
+%         end
+%     end
     
     %% Convert 0 to NaN for color plot 
 %     results{d,INDX_BAT}(~results{d,INDX_BAT}) = nan; %Turn the zeros into nans so they don't screw up the color plot
-%     results{d,INDX_BAM}(~results{d,INDX_BAM}) = nan;
+    try
+        results{d,INDX_BAM}(~results{d,INDX_BAM}) = nan;
+    catch
+    end
     %% Make plot
     close all;
     hold on;
     axis off;
     axis square;
     axis([1 10 1 10]);
-
-    % caxis([2100 2600]);
+    colormap(flipud(hsv));
+    %Max BAM is in index 1, 2336.698
+    % 2336, 2137, 2170, 2256, 2176, 2237
+    %Min BAM is in index 6, 1765.176
+    %2057, 1950, 1934, 2091, 1986, 1765
+    if d == 6
+        caxis([1765 2337]);
+    else
+        caxis([1930 2337]);
+    end
+    
     for i=1:10
         for j=1:10
             c = plot_this_matrix_BAM(i,j);
@@ -89,16 +102,22 @@ for d = 1:size(DATASETS,1)
     R2 = results{d,INDX_R2};
     %5.5 is the center of a plot with axis from 1 to 10; 10-1 = 9 / 2 = 4.5 + 1
     % WHY IS THE Y-COORDINATE BEING SUBTRACTED HERE? 
+    
+    
+    %Note: coefs(3) and coefs(2) below should be reversed. HOWEVER, since
+    %we have not computed the results cell with the new code, leaving it
+    %reversed reflects the old (improper, but correct) representation.
     arrow([5.5,5.5],[5.5+((coefs(3)/2)/coefs_norm)*(R2*4.5),5.5-((coefs(2)/2)/coefs_norm)*(R2*4.5)],'Width',3);
 
     % set(get(colorbar),'Location','southoutside');
     c_bar = colorbar('southoutside');
     set(get(c_bar, 'xlabel'), 'string', 'time (ms)')
-
-    saveas(gcf,strcat('BAT_PLOT_',results{d,INDX_FILENAME}),'epsc');
-
-    % NOTE: MODEL IS ONLY COMPUTED FOR BAT; NOT BAM. 
-     
+    if save
+        saveas(gcf,strcat('BAM_PLOT_',results{d,INDX_FILENAME}),'epsc');
+    end
+    % NOTE: MODEL IS ONLY COMPUTED FOR BAM; NOT BAT. 
+    results{d,INDX_FILENAME}
+    pause
 end
 
 %% PLOT: Vector_strength_M1TM_201110
@@ -168,36 +187,9 @@ for d = 1:NUM_DATASETS
         text(0,-.9,strcat('Weighted (R2) Vector Strength: ',num2str(wvs), ' p = ', num2str(p_valueWVS)), 'FontName', 'Arial','FontSize',12, 'FontWeight','bold');
     end
 end
-saveas(gcf,strcat('Vector_strength_',results{d,INDX_FILENAME}(1:11)),'epsc');
-
-%% PLOT: BAT_avg_time_M1TM_201110
-[NUM_DATASETS,~] = size(results);
-BAT_avgs = zeros(NUM_DATASETS,1);
-BAT_extrema = zeros(NUM_DATASETS,2);
-
-for d = 1:NUM_DATASETS
-    BAT = results{d, INDX_BAT};
-    try
-        BAT(~BAT) = nan;
-    catch
-        
-    end    
-    BAT_avgs(d) = nanmean(BAT);
-    BAT_extrema(d,:) = [min(BAT) max(BAT)];
+if save
+    saveas(gcf,strcat('Vector_strength_',results{d,INDX_FILENAME}(1:11)),'epsc');
 end
-global_min = min(BAT_extrema(:,1));
-dist_to_min = BAT_avgs - BAT_extrema(:,1);
-dist_to_max = BAT_avgs - BAT_extrema(:,2);
-
-figure
-errorbar(1:NUM_DATASETS, BAT_avgs, dist_to_min, dist_to_max)
-ax = gca; 
-xlabels = results(:,INDX_FILENAME)';
-set(ax,'XTick', 1:NUM_DATASETS)
-set(ax,'XTickLabel', xlabels)
-
-text(1,global_min,'min, avg, max BAT', 'FontName', 'Arial','FontSize',12, 'FontWeight','bold');
-saveas(gcf,strcat('BAT_avg_time_',results{1,INDX_FILENAME}(1:11)),'epsc');
 
 %% PLOT: BAM_avg_time_M1TM_201110
 [NUM_DATASETS,~] = size(results);
@@ -226,8 +218,48 @@ set(ax,'XTick', 1:NUM_DATASETS)
 set(ax,'XTickLabel', xlabels)
 
 text(1,global_min,'min, avg, max BAM', 'FontName', 'Arial','FontSize',12, 'FontWeight','bold');
-saveas(gcf,strcat('BAM_avg_time_',results{1,INDX_FILENAME}(1:11)),'epsc');
+
+if save
+    saveas(gcf,strcat('BAM_avg_time_',results{1,INDX_FILENAME}(1:11)),'epsc');
+end
+%% PLOT: BAM_avg_time_M1TM_201110
+[NUM_DATASETS,~] = size(results);
+BAM_avgs = zeros(NUM_DATASETS,1);
+BAM_extrema = zeros(NUM_DATASETS,2);
+
+for d = 1:NUM_DATASETS
+    BAM = results{d, INDX_BAM};
+    try
+        BAM(~BAM) = nan;
+    catch
+        
+    end    
+    BAM_avgs(d) = nanmean(BAM);
+    BAM_extrema(d,:) = [min(BAM) max(BAM)];
+end
+global_min = min(BAM_extrema(:,1));
+dist_to_min = BAM_avgs - BAM_extrema(:,1);
+dist_to_max = BAM_avgs - BAM_extrema(:,2);
+
+figure
+errorbar(1:NUM_DATASETS, BAM_avgs, dist_to_min, dist_to_max)
+ax = gca; 
+xlabels = results(:,INDX_FILENAME)';
+set(ax,'XTick', 1:NUM_DATASETS)
+set(ax,'XTickLabel', xlabels)
+
+text(1,global_min,'min, avg, max BAM', 'FontName', 'Arial','FontSize',12, 'FontWeight','bold');
+if save
+    saveas(gcf,strcat('BAM_avg_time_',results{1,INDX_FILENAME}(1:11)),'epsc');
+end
 %%
+
+%% PLOT: anova_results
+doanova = [results{1,INDX_BAM} results{2,INDX_BAM} results{3,INDX_BAM} results{4,INDX_BAM} results{5,INDX_BAM}];
+anova1(doanova)
+if save
+    saveas(gcf,strcat('anova_results', results{1,INDX_FILENAME}(1:11)),'epsc');
+end
 
 %% PLOT: R2_M1TM_201110
 figure
@@ -238,8 +270,9 @@ xlabels = results(:,INDX_FILENAME)';
 set(ax,'XTick', 1:NUM_DATASETS)
 set(ax,'XTickLabel', xlabels)
 text(1,.8,'R2 values', 'FontName', 'Arial','FontSize',12, 'FontWeight','bold');
-saveas(gcf,strcat('R2_',results{1,INDX_FILENAME}(1:11)),'epsc');
-
+if save
+    saveas(gcf,strcat('R2_',results{1,INDX_FILENAME}(1:11)),'epsc');
+end
 %% PLOT: VS_M1TM_201110
 figure
 bar(cell2mat(results(:,INDX_VS)))
@@ -249,8 +282,9 @@ xlabels = results(:,INDX_FILENAME)';
 set(ax,'XTick', 1:NUM_DATASETS)
 set(ax,'XTickLabel', xlabels)
 text(1,.95,'Vector Strengths (from 1000x simulation)', 'FontName', 'Arial','FontSize',12, 'FontWeight','bold');
-saveas(gcf,strcat('VS_',results{1,INDX_FILENAME}(1:11)),'epsc');
-
+if save
+    saveas(gcf,strcat('VS_',results{1,INDX_FILENAME}(1:11)),'epsc');
+end
 %% PLOT: WVS_M1TM_201110
 figure
 bar(cell2mat(results(:,INDX_WVS)))
@@ -260,8 +294,9 @@ xlabels = results(:,INDX_FILENAME)';
 set(ax,'XTick', 1:NUM_DATASETS)
 set(ax,'XTickLabel', xlabels)
 text(1,.99,'Weighted Vector Strengths (from 1000x simulation)', 'FontName', 'Arial','FontSize',12, 'FontWeight','bold');
-saveas(gcf,strcat('WVS_',results{1,INDX_FILENAME}(1:11)),'epsc');
-
+if save
+    saveas(gcf,strcat('WVS_',results{1,INDX_FILENAME}(1:11)),'epsc');
+end
 %% LEARNING PLOTS: (change this title) R2 of trial bins
 [NUM_DATASETS,~] = size(results);
 
@@ -283,7 +318,9 @@ for d = 1:NUM_DATASETS
 %     text(1,.8,'R2 values', 'FontName', 'Arial','FontSize',12, 'FontWeight','bold');    
 end
 legend('show')
-
+if save
+    saveas(gcf,strcat('Learn_R2_',results{1,INDX_FILENAME}(1:11)),'epsc');
+end
 %% LEARNING PLOTS: (change this title) R2 of trial bins with DAYS on X
 [NUM_DATASETS,~] = size(results);
 trial_data = [];
@@ -307,7 +344,9 @@ end
 ax = gca;
 set(ax,'XTick', 1:NUM_DATASETS)
 legend('show')
-
+if save
+    saveas(gcf,strcat('Learn_R2_2_',results{1,INDX_FILENAME}(1:11)),'epsc');
+end
 %% LEARNING PLOTS: (change this title) VS of trial bins
 [NUM_DATASETS,~] = size(results);
 
@@ -329,7 +368,9 @@ for d = 1:NUM_DATASETS
 %     text(1,.8,'R2 values', 'FontName', 'Arial','FontSize',12, 'FontWeight','bold');    
 end
 legend('show')
-
+if save
+    saveas(gcf,strcat('Learn_VS_',results{1,INDX_FILENAME}(1:11)),'epsc');
+end
 %% LEARNING PLOTS: (change this title) VS of trial bins with DAYS on X
 [NUM_DATASETS,~] = size(results);
 trial_data = [];
@@ -353,7 +394,9 @@ end
 ax = gca;
 set(ax,'XTick', 1:NUM_DATASETS)
 legend('show')
-
+if save
+    saveas(gcf,strcat('Learn_VS_2_',results{1,INDX_FILENAME}(1:11)),'epsc');
+end
 
 
 %% PLOT add-on: Plot all bootstrapped arrows
@@ -466,10 +509,56 @@ for d = 1:size(DATASETS,1)
     % set(get(colorbar),'Location','southoutside');\
     c_bar = colorbar('southoutside');
     set(get(c_bar, 'xlabel'), 'string', 'time (ms)')
-
-    saveas(gcf,strcat('BAT_PLOT_',results{d,INDX_FILENAME}),'epsc');
-
+    
+    if save
+        saveas(gcf,strcat('BAT_PLOT_',results{d,INDX_FILENAME}),'epsc');
+    end
     % NOTE: MODEL IS ONLY COMPUTED FOR BAT; NOT BAM. 
      
 end
 
+
+
+%% PLOT: filter_data.eps
+filename = 'M1TM_20111014.mat'; 
+TOTAL_NUM_ELEC = 5;
+f = whos('-file',filename,'-regexp','^M1lfp_MB_elec');
+NUM_TRIALS = f(1).size(2);
+all_data = NaN(NUM_OBS, NUM_TRIALS, TOTAL_NUM_ELEC);
+hilbert_data = NaN(NUM_OBS, NUM_TRIALS, TOTAL_NUM_ELEC);
+%%
+j = 1;
+%Only check electrodes 1-5
+for i = 1:TOTAL_NUM_ELEC
+    electrode_name = strcat('M1lfp_MB_elec',num2str(i,'%03d'));
+    %if electrode exists
+    num_working_elec = size(f,1);
+    if j <= num_working_elec && strcmp(electrode_name,f(j).name)
+        load(filename, electrode_name);
+        electrode_struct = arrayfun(@(x) x.times(:), eval(electrode_name), 'un', 0);
+        all_data(:,~cellfun(@(x) all(isnan(x)), electrode_struct),i) = cell2mat(electrode_struct(~cellfun(@(x) all(isnan(x)), electrode_struct)));
+        filtered_data = filterData(cell2mat(electrode_struct(~cellfun(@(x) all(isnan(x)), electrode_struct))),PEAK_FRQ,BANDWIDTH,SAMPLE_FRQ);
+        hilbert_data(:,~cellfun(@(x) all(isnan(x)), electrode_struct),i) = abs(hilbert(filtered_data));
+        clear(electrode_name)
+        j = j + 1, filename
+    end
+end    
+
+%%
+raw_data = all_data;
+filtered_data = filterData(raw_data,PEAK_FRQ,BANDWIDTH,SAMPLE_FRQ);
+%%
+for good_elec = [1,4,5]
+    for good_trials = [11,17]
+        plot(raw_data(:,good_trials,good_elec),'y')
+        hold on
+
+        plot(filtered_data(:,good_trials,good_elec),'b')
+        plot(hilbert_data(:,good_trials,good_elec),'r','LineWidth',2)
+        hold off
+        good_elec, good_trials
+        pause
+    end
+end
+
+% saveas(gcf,'filterdata','epsc');
