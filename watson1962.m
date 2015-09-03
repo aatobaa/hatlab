@@ -5,6 +5,11 @@ function U2 = watson1962(N1, N2)
 %http://biomet.oxfordjournals.org/content/49/1-2/57.full.pdf
 %for reference.
 
+%Sample Data:
+% N1 = [50; 290; 300; 300; 305; 320; 330; 330; 335; 340; 340; 355];
+% N2 = [70; 155; 190; 195; 215; 235; 235; 240; 255; 260; 290; 300; 300; 300];
+
+
 N1 = sort(N1);
 N2 = sort(N2);
 
