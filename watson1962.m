@@ -1,4 +1,4 @@
-function U2 = watson1962(N1, N2)
+function [U2,p] = watson1962(N1, N2)
 %G.S. Watson's statistic for the Goodness-of-fit tests on a circle, pt
 %II.
 %See
@@ -69,5 +69,5 @@ S1 = sum(N_k .* z_values);
 S2 = sum(N_k .* z_values.^2);
 
 U2 = ((N1*N2) / ((N1+N2)^2)) * (S2 - (S1^2)/(N1+N2));
-
+p = 2*exp(19.74*-U2);
 end
