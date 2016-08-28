@@ -38,7 +38,6 @@ allR2 = nan(length(thresholdRange),1);
 allSlope = nan(length(thresholdRange),1);
 allIntercept = nan(length(thresholdRange),1);
 
-torque_profiles = zeros(1000,numTrials);
 t = 1;
 for THRESHOLD = .06
     THRESHOLD
@@ -65,16 +64,12 @@ for THRESHOLD = .06
         cjt = sqrt(st.^2 + et.^2);
 
         % Use 0.1 for RS1050225 and 0.03 for V1050917
-        [pks, locs] = findpeaks(cjt(1:end), 'MinPeakHeight', .1);
-%         [pks, locs] = findpeaks(cjt, 'MinPeakHeight', .1);
+        [pks, locs] = findpeaks(cjt(1000:end), 'MinPeakHeight', .1);
+%         [pks, locs] = findpeaks(cjt(1000:end, 'MinPeakHeight', .1);
         if ~isempty(locs)
             pjtrs(i) = cjt(locs(1));
-%             pjtrs(i) = cjt(locs(1));
             % relative to movement onset 
             tpjtrs(i) = kin.raw.stamps(idxs(locs(1))) - behrs(i,5);
-%             tpjtrs(i) = kin.raw.stamps(idxs(locs(1))) - behrs(i,5);
-            
-
             
             %Adil 7/26: torque Onset instead of peak torque
             % Noting this correspondence between indices and time:
@@ -82,14 +77,11 @@ for THRESHOLD = .06
             % behrs(1,6)) gives an array with the number of elements equal
             % to (behrs(1,6) - behrs(1,4)) * 500. Thus, to find movement
             % onset in the CJT plot, we do:
-%             mO_cjt = round((behrs(i,5) - behrs(i,4))*500);
-            tO = getTorqueOnset(cjt(1:end),500,2,THRESHOLD,i,'rs');
-%             tO = getTorqueOnset(cjt,mO_cjt,2,THRESHOLD,i,'rs');
+            mO_cjt = round((behrs(i,5) - behrs(i,4))*500);
+            tO = getTorqueOnset(cjt,mO_cjt,2,THRESHOLD,i,'rs');
             torqueOnsetMagjtrs(i) = cjt(tO);
-%             torqueOnsetMagjtrs(i) = cjt(tO);
             timeOfTorqueOnsetjtrs(i) = kin.raw.stamps(idxs(tO))-behrs(i,5);
-            
-            torque_profiles(:,i) = cjt;
+
         else
             disp(num2str(i))
         end;
@@ -101,7 +93,7 @@ for THRESHOLD = .06
     %     ylabel('combined')
 %         saveas(gcf,strcat('example_',num2str(i)),'epsc')
 %         i
-%         pause
+        pause
     end;
 
 

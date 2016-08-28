@@ -18,6 +18,7 @@ end;
 
 H = abs(H);
 numChannels = size(H, 3);
+numTrials = size(H,2);
 aveBetaAttenuationTimes = zeros(numChannels, 1);
 attMag = zeros(numChannels, 1);
 attAmp = zeros(numChannels, 1);
@@ -45,7 +46,7 @@ if method == 1
     end;
 elseif method == 2
     for j = 1:numChannels
-        meanEnvelope = mean(H(:,:,j), 2);
+        meanEnvelope = nanmean(H(:,:,j), 2);
         [betaFloor, fidx] = min(meanEnvelope(round(.5*fs):round(1.5*fs)));
         [betaCeil,  cidx] = max(meanEnvelope(round(.5*fs):round(1.5*fs)));
         tabat = find(meanEnvelope(cidx+fs/2:fidx+fs/2) < floorThresh * (betaCeil - betaFloor) + betaFloor, 1) + cidx+fs/2 + 1;
@@ -150,6 +151,45 @@ elseif method == 5
         else
             aveBetaAttenuationTimes(j) = nan;
             disp(['no attenuation time found for channel ', num2str(j)]);
+        end;
+        attMag(j) = meanEnvelope(cidx + round(fs/2)+1) - meanEnvelope(fidx + round(fs/2)+1);
+        attAmp(j) = meanEnvelope(fidx + round(fs/2)+1);
+        if makeFigure
+            clf
+            plot((-fs:fs)./fs, meanEnvelope, 'color', 'b', 'lineWidth', 2);
+            set(gca, 'fontSize', 14);
+            line(([aveBetaAttenuationTimes(j) aveBetaAttenuationTimes(j)] - fs) ./ fs, get(gca, 'ylim'), 'color', 'k');
+            line(([fidx + round(fs/2)+1, fidx + round(fs/2)+1] - fs) ./ fs, get(gca, 'ylim'), 'color', 'r')
+            line(([cidx + round(fs/2)+1, cidx + round(fs/2)+1] - fs) ./ fs, get(gca, 'ylim'), 'color', 'r')
+            %line([-1, 1], [(1+floorThresh) * betaFloor, (1+floorThresh) * betaFloor], 'color', 'r');
+            line([-1, 1], [floorThresh * (betaCeil - betaFloor) + betaFloor, floorThresh * (betaCeil - betaFloor) + betaFloor], 'color', 'r');
+            %xlabel('time relative to movement onset (s)');
+            %ylabel('LFP amplitude (au)');
+            title(num2str(j))
+            %xlabel(num2str(goodTrials(j)))
+            pause;
+        end;
+    end;
+elseif method == 6
+    'in method 6'
+%METHOD 6 averages across electrodes to attempt to get a BAT for EACH
+%TRIAl.
+aveBetaAttenuationTimes = zeros(numTrials, 1);
+attMag = zeros(numTrials, 1);
+attAmp = zeros(numTrials, 1);
+ampAtBAT   = nan(numTrials, 1);
+
+    for j = 1:numTrials
+        meanEnvelope = nanmean(squeeze(H(:,j,:)), 2);
+        [betaFloor, fidx] = min(meanEnvelope(round(.5*fs):round(1.5*fs)));
+        [betaCeil,  cidx] = max(meanEnvelope(round(.5*fs):round(1.5*fs)));
+        tabat = find(meanEnvelope(cidx+fs/2:fidx+fs/2) < floorThresh * (betaCeil - betaFloor) + betaFloor, 1) + cidx+fs/2 + 1;
+        if ~isempty(tabat)
+            aveBetaAttenuationTimes(j) = tabat;
+            ampAtBAT(j) = meanEnvelope(tabat);
+        else
+            aveBetaAttenuationTimes(j) = nan;
+            disp(['no attenuation time found for trial ', num2str(j)]);
         end;
         attMag(j) = meanEnvelope(cidx + round(fs/2)+1) - meanEnvelope(fidx + round(fs/2)+1);
         attAmp(j) = meanEnvelope(fidx + round(fs/2)+1);

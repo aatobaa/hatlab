@@ -60,7 +60,7 @@ for THRESHOLD = .06
             tO = getTorqueOnset(cjt,2,THRESHOLD,i,'v');
             torqueOnsetMagjtv13(i) = cjt(tO);
             timeOfTorqueOnsetjtv13(i) = kin.raw.stamps(idxs(tO))-behv13(i,5);
-            saveas(gcf,strcat('example_',num2str(i)),'epsc')
+%             saveas(gcf,strcat('example_',num2str(i)),'epsc')
 
 %             pause
         else
@@ -113,6 +113,9 @@ for THRESHOLD = .06
     allIntercept(t) = po(2);
     t = t + 1;
     close all
+        
+    [B, BINT, ~, ~, STATS] = regress(vto13', [ones(size(vba13')) vba13'])
+    disp('      R2, F, P-VALUE, EST. VARIANCE ERROR')
     
 end
 
