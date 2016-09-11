@@ -38,7 +38,18 @@ allR2 = nan(length(thresholdRange),1);
 allSlope = nan(length(thresholdRange),1);
 allIntercept = nan(length(thresholdRange),1);
 
-torque_profiles = zeros(1000,numTrials);
+cjt_torque_profiles = zeros(1000,numTrials);
+st_torque_profiles = zeros(1000,numTrials);
+et_torque_profiles = zeros(1000,numTrials); 
+
+peak_torque_times_st = zeros(numTrials,1);
+peak_torque_times_et = zeros(numTrials,1);
+peak_torque_times_cjt = zeros(numTrials,1);
+onset_torque_times_st = zeros(numTrials,1);
+onset_torque_times_et = zeros(numTrials,1);
+onset_torque_times_cjt = zeros(numTrials,1);
+
+
 t = 1;
 for THRESHOLD = .06
     THRESHOLD
@@ -52,10 +63,10 @@ for THRESHOLD = .06
         
         %TRYING SOMETHING NEW: Cross-correlation with Beta. Taking +- 1
         %second to movement onset. 
-        idxs = find(kin.raw.stamps > behrs(i,5) - 1 & kin.raw.stamps < behrs(i,5) + 1);
+%         idxs = find(kin.raw.stamps > behrs(i,5) - 1 & kin.raw.stamps < behrs(i,5) + 1);
         
         % relative to GO CUE
-%         idxs = find(kin.raw.stamps > behrs(i,4) & kin.raw.stamps < behrs(i,6));
+        idxs = find(kin.raw.stamps > behrs(i,4) & kin.raw.stamps < behrs(i,6));
         %shoulder torque
         st = real(torque(idxs,1));
         %elbow torque
@@ -82,23 +93,145 @@ for THRESHOLD = .06
             % behrs(1,6)) gives an array with the number of elements equal
             % to (behrs(1,6) - behrs(1,4)) * 500. Thus, to find movement
             % onset in the CJT plot, we do:
-%             mO_cjt = round((behrs(i,5) - behrs(i,4))*500);
-            tO = getTorqueOnset(cjt(1:end),500,2,THRESHOLD,i,'rs');
-%             tO = getTorqueOnset(cjt,mO_cjt,2,THRESHOLD,i,'rs');
-            torqueOnsetMagjtrs(i) = cjt(tO);
+            mO_cjt = round((behrs(i,5) - behrs(i,4))*500);
+
+% New 9/4/16: Defining combined torque as the NORMALIZED combination of
+% shoulder and elbow torque, so modulations in either joint affect the
+% combined equally, regardless of the relative magnitude of the individual
+% componenent. 
+% 
+        normalizeSubScript = 0;
+        if normalizeSubScript
+            % Normalize profiles
+            min_st = min(st);
+            max_st= max(st);
+            min_et = min(et);
+            max_et = max(et);
+
+            a=-1; b=1;
+            % Using formula from http://www.mathworks.com/matlabcentral/fileexchange/5103-toolbox-diffc/content/toolbox_diffc/toolbox/rescale.m
+            norm_st = (b-a) .* (st - min_st)./(max_st-min_st) + a;
+            norm_et = (b-a) .* (et - min_et)./(max_et-min_et) + a; 
+
+            st = norm_st;
+            et = norm_et;
+            cjt = sqrt(st.^2 + et.^2);
+            
+            doPlot = 0
+            if doPlot                
+                subplot(4,1,1)
+                getTorqueOnset(sqrt(st.^2),500,2,THRESHOLD,i,'norm_rs');
+                ylabel('shoulder')
+
+    %             legend('show','torque','torque onset','movement onset','peak torque');
+
+                subplot(4,1,2)
+                getTorqueOnset(sqrt(et.^2),500,2,THRESHOLD,i,'norm_rs');
+                ylabel('elbow')
+
+                subplot(4,1,3)
+                tO = getTorqueOnset(cjt(1:end),500,2,THRESHOLD,i,'norm_rs');
+                ylabel('combined')
+
+                subplot(4,1,4)
+                plot(1:2:2000,beta_profiles(1:1000,i),'LineWidth',2)
+                ylabel('beta amplitude')
+            end
+            tO = getTorqueOnset(cjt(1:end),500,2,THRESHOLD,i,'norm_rs');
+        end
+        %% This section shows torque profiles split by shoulder, elbow, and combined, followed by beta profile
+        moSubPlots = 0;
+        if i == 233
+            moSubPlots = 0;
+        end
+        if moSubPlots
+            subplot(4,1,1)
+            [sto, spt, ~] = getTorqueOnset(sqrt(st.^2),500,2,THRESHOLD,i,'v');
+            ylabel('shoulder')
+            
+            legend('show','torque','torque onset','movement onset','peak torque');
+            
+            subplot(4,1,2)
+            [eto, ept, ~] = getTorqueOnset(sqrt(et.^2),500,2,THRESHOLD,i,'v');
+            ylabel('elbow')
+
+            subplot(4,1,3)
+            [tO, cpt, ~] = getTorqueOnset(cjt(1:end),500,2,THRESHOLD,i,'v');
+            ylabel('combined')
+            subplot(4,1,4)
+            plot(1:2:2000,beta_profiles(1:1000,i),'LineWidth',2)
+            ylabel('beta amplitude') 
+            
+            peak_torque_times_st(i) = spt;
+            peak_torque_times_et(i) = ept;
+            peak_torque_times_cjt(i) = cpt;
+            onset_torque_times_st(i) = sto;
+            onset_torque_times_et(i) = eto;
+            onset_torque_times_cjt(i) = tO;
+            %% This section addresses: "Movement Onset is not always identified at peak torque / torque onset
+            doPlot = 0;
+            if doPlot
+                subplot(2,1,1)
+                hold on
+                plot(peak_torque_times_st-500,'.','Color',[0 0 1],'MarkerSize',6)
+                %B(1) is the intercept
+                %B(2) is the slope
+                [B, BINT_pst, ~, ~, STATS_pst] = regress(peak_torque_times_st' - 500,[ones(281,1) (1:281)']);
+%                 linScale = 1:281;
+%                 plot(linScale, B(1),'Color',[0 0 1],'LineWidth',13);
+                
+                plot(peak_torque_times_et-500,'.','Color', [0 0.9 0.2],'MarkerSize',6)
+                [B, BINT_pet, ~, ~, STATS_pet] = regress(peak_torque_times_et' - 500,[ones(281,1) (1:281)']);
+%                 linScale = 1:281;
+%                 plot(linScale, B(2) * linScale + B(1),'Color',[0 0.9 0.2],'LineWidth',3);
+                
+                plot(peak_torque_times_cjt-500,'.', 'Color', [1 .8 0],'MarkerSize',6)
+                [B, BINT_pcjt, ~, ~, STATS_pcjt] = regress(peak_torque_times_cjt' - 500,[ones(281,1) (1:281)']);
+%                 linScale = 1:281;
+%                 plot(linScale, B(2) * linScale + B(1),'Color',[1 .8 0],'LineWidth',3);
+                
+                
+                line([0 281],[0 0],'LineStyle','--','Color','r','LineWidth',1)
+                xlim([0 281])
+                ylabel('Peak Torque')
+                legend('show','shoulder torque','elbow torque','combined torque')
+                title('Torque Events relative to Movement Onset')
+                subplot(2,1,2)
+                hold
+                plot(onset_torque_times_st-500,'.','Color',[0 0 1],'MarkerSize',10)
+                [B, BINT_ost, ~, ~, STATS_ost] = regress(onset_torque_times_st' - 500,[ones(281,1) (1:281)']);
+
+                plot(onset_torque_times_et-500,'.','Color', [0 0.9 0.2],'MarkerSize',10)
+                [B, BINT_oet, ~, ~, STATS_oet] = regress(onset_torque_times_et' - 500,[ones(281,1) (1:281)']);
+
+                plot(onset_torque_times_cjt-500,'.','Color', [1 .8 0],'MarkerSize',10)
+                [B, BINT_ocjt, ~, ~, STATS_ocjt] = regress(onset_torque_times_cjt' - 500,[ones(281,1) (1:281)']);
+
+                line([0 281],[0 0],'LineStyle','--','Color','r','LineWidth',1)
+                xlim([0 281])
+                ylabel('Torque Onset')
+                
+                xlabel('Trial Number')
+            end
+        end
+            tO = getTorqueOnset(cjt,mO_cjt,2,THRESHOLD,i,'rs');
+%             torqueOnsetMagjtrs(i) = cjt(tO);
 %             torqueOnsetMagjtrs(i) = cjt(tO);
             timeOfTorqueOnsetjtrs(i) = kin.raw.stamps(idxs(tO))-behrs(i,5);
-            
-            torque_profiles(:,i) = cjt;
+            %The below needs debugging / is unimplemented 
+%             cjt_torque_profiles(:,i) = cjt;
+%             st_torque_profiles(:,i) = st;
+%             et_torque_profiles(:,i) = et;
+%             pause
         else
             disp(num2str(i))
         end;
-    %     subplot(1,3,1), plot(st)
-    %     ylabel('shoulder')
-    %     subplot(1,3,2), plot(et)
-    %     ylabel('elbow')
-    %     subplot(1,3,3), plot(cjt)
-    %     ylabel('combined')
+%         subplot(3,1,1), plot(sqrt(st.^2))
+%         ylabel('shoulder')
+%         subplot(3,1,2), plot(sqrt(et.^2))
+%         ylabel('elbow')
+%         subplot(3,1,3), plot(cjt)
+%         ylabel('combined')
 %         saveas(gcf,strcat('example_',num2str(i)),'epsc')
 %         i
 %         pause
