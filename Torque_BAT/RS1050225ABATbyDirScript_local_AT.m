@@ -71,10 +71,12 @@ for trial = 1:numTrials
     crosscorr(beta_profiles(:,trial),torque_profiles(:,trial),999)
     pause
 end
-%%
+%% Single trials are now filtered 
 
-
+torque_profiles = cjt_torque_profiles;
+singleTrialBATs = zeros(numTrials,1);
 for trial = 1:numTrials
+%     trial = 1;
     % Normalize profiles
     minBeta = min(beta_profiles(:,trial));
     maxBeta= max(beta_profiles(:,trial));
@@ -86,54 +88,99 @@ for trial = 1:numTrials
     normBeta = (b-a) .* (beta_profiles(:,trial) - minBeta)./(maxBeta-minBeta) + a;
     normTorque = (b-a) .* (torque_profiles(:,trial) - minTorque)./(maxTorque-minTorque) + a; 
 
-
-    plot(normBeta,'r','LineWidth',2)
-    hold on
-    plot(normTorque,'b','LineWidth',2)
-    hold off
-    legend('show','Beta','Torque')
-    pause
+        
+    % try filtering
+    fc = 5;
+    fs = 10;
+    wc = 0.005;
+    [b,a] = butter(4,wc);
+    filteredBeta = filtfilt(b,a,normBeta);
+%     
+%     plot(normBeta,'r','LineWidth',2)
+%     hold on
+%     plot(filteredBeta, 'b','LineWidth',2)
+% %     plot(normTorque,'b','LineWidth',2)
+%     hold off
+%     legend('show','Beta','Torque')
+%     
+%     pause
+    
+    [singleTrialBAT, ~, ~, ~] = findABAT_local_AT(filteredBeta,.15,0,500,7);
+    singleTrialBATs(trial) = singleTrialBAT;
+%     pause
 %     plot(beta_profiles(:,trial),'r')
 %     hold on
 %     plot(torque_profiles(:,trial),'b')
 %     hold off
 end
+%% Expanding the above analysis with simulations 
 
+torque_profiles = cjt_torque_profiles;
+for trial = 1:1
+    % Normalize profiles
+    minBeta = min(beta_profiles(:,trial));
+    maxBeta= max(beta_profiles(:,trial));
+    minTorque = min(torque_profiles(:,trial));
+    maxTorque = max(torque_profiles(:,trial));
+    a=-1; b=1;
+    % Using formula from http://www.mathworks.com/matlabcentral/fileexchange/5103-toolbox-diffc/content/toolbox_diffc/toolbox/rescale.m
+    normBeta = (b-a) .* (beta_profiles(:,trial) - minBeta)./(maxBeta-minBeta) + a;
+    normTorque = (b-a) .* (torque_profiles(:,trial) - minTorque)./(maxTorque-minTorque) + a; 
+%     for X_OFFSET = 540:560
+        for X_SCALE = 1:0.1:2
+            xlinspace = X_SCALE*(1:1001);
+            corrcoef(normTorque
+            
+            
+            
+            plot([normBeta(1:end-X_OFFSET); zeros(X_OFFSET,1)],'r','LineWidth',2)
+            hold on
+            plot(X_SCALE,[normTorque(X_OFFSET:end); zeros(X_OFFSET,1)],'b','LineWidth',2)
+            hold off
+            legend('show','Beta','Torque')
+            pause
+        %     plot(beta_profiles(:,trial),'r')
+        %     hold on
+        %     plot(torque_profiles(:,trial),'b')
+        %     hold off
+        end
+%     end
+end
 
 %% 8 directions
 fastTrials = (1:size(beh,1))';
-
+method = 2;
 [abatLeft, amLeft, aaLeft, adaLeft] = findABAT_local_AT(...
     H(:, fastTrials & (beh(:,8) == 5 | beh(:,8) == 5 | beh(:,8) == 5), :), ...
-    .15, 0, 1000, 6);
+    .15, 0, 1000, method);
 
 [abatRight, amRight, aaRight, adaRight] = findABAT_local_AT(...
     H(:, fastTrials & (beh(:,8) == 1 | beh(:,8) == 1 | beh(:,8) == 1), :), ...
-    .15, 1, 1000, 6);
+    .15, 0, 1000, method);
 
 [abatTop, amTop, aaTop, adaTop]    = findABAT_local_AT(...
     H(:, fastTrials & (beh(:,8) == 3 | beh(:,8) == 3 | beh(:,8) == 3), :), ...
-    .15, 0, 1000, 2);
+    .15, 0, 1000, method);
 
 [abatBottom, amBottom, aaBottom, adaBottom] = findABAT_local_AT(...
     H(:, fastTrials & (beh(:,8) == 7 | beh(:,8) == 7 | beh(:,8) == 7), :), ...
-    .15, 0, 1000, 2);
+    .15, 0, 1000, method);
 
 [abatNE, amNE, aaNE, adaNE] = findABAT_local_AT(...
     H(:, fastTrials & (beh(:,8) == 2 | beh(:,8) == 2 | beh(:,8) == 2), :), ...
-    .15, 0, 1000, 2);
+    .15, 0, 1000, method);
 
 [abatNW, amNW, aaNW, adaNW] = findABAT_local_AT(...
     H(:, fastTrials & (beh(:,8) == 4 | beh(:,8) == 4 | beh(:,8) == 4), :), ...
-    .15, 0, 1000, 2);
+    .15, 0, 1000, method);
 
 [abatSW, amSW, aaSW, adaSW] = findABAT_local_AT(...
     H(:, fastTrials & (beh(:,8) == 6 | beh(:,8) == 6 | beh(:,8) == 6), :), ...
-    .15, 0, 1000, 2);
+    .15, 0, 1000, method);
 
 [abatSE, amSE, aaSE, adaSE] = findABAT_local_AT(...
     H(:, fastTrials & (beh(:,8) == 8 | beh(:,8) == 8 | beh(:,8) == 8), :), ...
-    .15, 0, 1000, 2);
+    .15, 0, 1000, method);
 %}
 %% blocked directions
 % Movement directions

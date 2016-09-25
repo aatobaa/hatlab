@@ -63,10 +63,10 @@ for THRESHOLD = .06
         
         %TRYING SOMETHING NEW: Cross-correlation with Beta. Taking +- 1
         %second to movement onset. 
-%         idxs = find(kin.raw.stamps > behrs(i,5) - 1 & kin.raw.stamps < behrs(i,5) + 1);
+        idxs = find(kin.raw.stamps > behrs(i,5) - 1 & kin.raw.stamps < behrs(i,5) + 1);
         
         % relative to GO CUE
-        idxs = find(kin.raw.stamps > behrs(i,4) & kin.raw.stamps < behrs(i,6));
+%         idxs = find(kin.raw.stamps > behrs(i,4) & kin.raw.stamps < behrs(i,6));
         %shoulder torque
         st = real(torque(idxs,1));
         %elbow torque
@@ -75,6 +75,9 @@ for THRESHOLD = .06
         %activity
         cjt = sqrt(st.^2 + et.^2);
 
+        %Uses shoulder torque instead of combined
+%         st = sqrt(st.^2);
+        
         % Use 0.1 for RS1050225 and 0.03 for V1050917
         [pks, locs] = findpeaks(cjt(1:end), 'MinPeakHeight', .1);
 %         [pks, locs] = findpeaks(cjt, 'MinPeakHeight', .1);
@@ -117,7 +120,7 @@ for THRESHOLD = .06
             et = norm_et;
             cjt = sqrt(st.^2 + et.^2);
             
-            doPlot = 0
+            doPlot = 0;
             if doPlot                
                 subplot(4,1,1)
                 getTorqueOnset(sqrt(st.^2),500,2,THRESHOLD,i,'norm_rs');
@@ -215,13 +218,21 @@ for THRESHOLD = .06
             end
         end
             tO = getTorqueOnset(cjt,mO_cjt,2,THRESHOLD,i,'rs');
+            % Use shoulder instead of combined 
+%             tO = getTorqueOnset(st,mO_cjt,2,THRESHOLD,i,'rs_st');
 %             torqueOnsetMagjtrs(i) = cjt(tO);
 %             torqueOnsetMagjtrs(i) = cjt(tO);
-            timeOfTorqueOnsetjtrs(i) = kin.raw.stamps(idxs(tO))-behrs(i,5);
+            if ~isnan(tO)
+                timeOfTorqueOnsetjtrs(i) = kin.raw.stamps(idxs(tO))-behrs(i,5);
+            end
             %The below needs debugging / is unimplemented 
-%             cjt_torque_profiles(:,i) = cjt;
+            cjt
+            cjt_torque_profiles(:,i) = cjt;
 %             st_torque_profiles(:,i) = st;
 %             et_torque_profiles(:,i) = et;
+            
+
+%             i
 %             pause
         else
             disp(num2str(i))
